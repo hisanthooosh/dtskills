@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
 import { CheckCircle, Lock, PlayCircle, FileText, ChevronDown, ChevronRight, HelpCircle } from 'lucide-react';
 
 export default function Classroom() {
@@ -135,10 +136,15 @@ export default function Classroom() {
                         </div>
                     )}
 
-                    {/* Notes */}
-                    <div className="prose max-w-none text-slate-600 mb-8 bg-slate-50 p-6 rounded-xl border border-slate-100">
-                        <h3 className="flex items-center gap-2 font-bold text-slate-800 mb-2"><FileText size={20} /> Notes</h3>
-                        <p className="whitespace-pre-wrap">{currentTopic.content}</p>
+                    {/* Notes (Markdown Enabled) */}
+                    <div className="mb-8 bg-slate-50 p-8 rounded-xl border border-slate-100">
+                        <h3 className="flex items-center gap-2 font-bold text-slate-800 mb-6 border-b pb-2">
+                            <FileText size={20} /> Lecture Notes
+                        </h3>
+
+                        <div className="prose max-w-none">
+                            <ReactMarkdown>{currentTopic.content}</ReactMarkdown>
+                        </div>
                     </div>
 
                     {/* MULTI-QUESTION QUIZ SECTION */}

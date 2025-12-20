@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -554,10 +555,12 @@ export default function AdminDashboard() {
                                     </div>
                                 )}
 
-                                {/* 2. Notes Preview */}
-                                <div className="prose max-w-none text-slate-600 mb-8 bg-slate-50 p-6 rounded-xl border border-slate-100">
-                                    <h3 className="font-bold text-slate-800 mb-2 border-b pb-2">Lecture Notes</h3>
-                                    <p className="whitespace-pre-wrap text-sm">{previewTopic.content || "No text content added."}</p>
+                                {/* 2. Notes Preview (Markdown Enabled) */}
+                                <div className="mb-8 bg-slate-50 p-6 rounded-xl border border-slate-100">
+                                    <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">Lecture Notes</h3>
+                                    <div className="prose text-sm max-w-none">
+                                        <ReactMarkdown>{previewTopic.content || "No text content added."}</ReactMarkdown>
+                                    </div>
                                 </div>
 
                                 {/* 3. Quiz Preview */}
