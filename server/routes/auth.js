@@ -1,16 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose'); // Import Mongoose
+const mongoose = require('mongoose');
 const User = require('../models/User');
-const College = require('../models/College'); // <--- THIS WAS LIKELY MISSING
+const College = require('../models/College');
 
 // 1. REGISTER ROUTE
 router.post('/register', async (req, res) => {
   try {
     const { username, email, password, rollNumber, collegeId, courseId } = req.body;
 
-    console.log("Register Request:", req.body); // Debugging
+    console.log("Register Request:", req.body); 
 
     // A. Basic Validation
     if (!username || !email || !password || !rollNumber || !collegeId || !courseId) {
@@ -24,7 +24,6 @@ router.post('/register', async (req, res) => {
     }
 
     // C. Validate College & Roll Number
-    // Ensure IDs are valid MongoDB ObjectIds before querying
     if (!mongoose.Types.ObjectId.isValid(collegeId) || !mongoose.Types.ObjectId.isValid(courseId)) {
         return res.status(400).json({ message: "Invalid College or Course ID" });
     }
@@ -49,13 +48,19 @@ router.post('/register', async (req, res) => {
 
     // D. Create User
     const hashedPassword = await bcrypt.hash(password, 10);
+    
     const newUser = new User({
-      username: name,
-      email,
+      username: username,
+      email: email,
       password: hashedPassword,
-      rollNumber,
-      collegeId,
-      courseId
+      role: 'student',
+      
+      // --- MAPPED FIELDS ---
+      name: username,             // Saves username as name
+      rollNumber: rollNumber,     
+      collegeName: college.name,  // Saves the college name string
+      collegeId: college._id,     
+      courseId: courseId          
     });
 
     const savedUser = await newUser.save();
@@ -80,7 +85,7 @@ router.post('/register', async (req, res) => {
     res.status(201).json({ message: "Registration successful!" });
 
   } catch (error) {
-    console.error("SERVER ERROR:", error); // Check your VS Code Terminal for this!
+    console.error("SERVER ERROR:", error);
     res.status(500).json({ error: error.message });
   }
 });
