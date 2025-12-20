@@ -8,7 +8,7 @@ import {
     BookOpen,
     PlusCircle,
     LogOut,
-
+    Edit2,
     Search,
     FolderPlus,
     FileVideo,
@@ -16,7 +16,7 @@ import {
     ChevronDown,
     FileText, HelpCircle, Trash2, Edit3,
     ChevronRight,
-    Eye, X
+    Eye, X, School
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -176,6 +176,70 @@ export default function AdminDashboard() {
         // Scroll to top of form (optional UX improvement)
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
+    // --- START NEW COLLEGE LOGIC ---
+    const [newCollegeName, setNewCollegeName] = useState('');
+    const [collegesList, setCollegesList] = useState([]);
+    const [targetCollegeId, setTargetCollegeId] = useState('');
+    const [newCourse, setNewCourse] = useState({ name: '', start: '', end: '' });
+
+    // Fetch colleges when dashboard loads
+    useEffect(() => {
+        axios.get('http://localhost:5000/api/college/all')
+            .then(res => setCollegesList(res.data))
+            .catch(err => console.error(err));
+    }, []);
+    // --- EDIT FUNCTIONS ---
+    const handleEditCollege = async (collegeId, currentName) => {
+        const newName = prompt("Enter new College Name:", currentName);
+        if (!newName || newName === currentName) return;
+
+        try {
+            await axios.put(`http://localhost:5000/api/college/update/${collegeId}`, { name: newName });
+            alert("College Name Updated!");
+            fetchColleges(); // Refresh list
+        } catch (err) {
+            alert("Error updating college");
+        }
+    };
+
+    const handleEditCourse = async (collegeId, courseId, currentName) => {
+        const newName = prompt("Enter new Department Name:", currentName);
+        if (!newName || newName === currentName) return;
+
+        try {
+            await axios.put(`http://localhost:5000/api/college/update-course`, {
+                collegeId,
+                courseId,
+                newName
+            });
+            alert("Department Updated!");
+            fetchColleges(); // Refresh list
+        } catch (err) {
+            alert("Error updating department");
+        }
+    };
+    const handleCreateCollege = async () => {
+        try {
+            await axios.post('http://localhost:5000/api/college/add', { name: newCollegeName });
+            alert('College Added');
+            // Refresh list
+            const res = await axios.get('http://localhost:5000/api/college/all');
+            setCollegesList(res.data);
+        } catch (err) { console.error(err); }
+    };
+
+    const handleGenerateRolls = async () => {
+        try {
+            await axios.post('http://localhost:5000/api/college/add-course', {
+                collegeId: targetCollegeId,
+                courseName: newCourse.name,
+                startRoll: newCourse.start,
+                endRoll: newCourse.end
+            });
+            alert('Roll Numbers Generated!');
+        } catch (err) { console.error(err); }
+    };
+    // --- END NEW COLLEGE LOGIC ---
     return (
         <div className="flex h-screen bg-slate-100 font-sans">
 
@@ -198,6 +262,12 @@ export default function AdminDashboard() {
                     </button>
                     <button onClick={() => setActiveTab('create')} className={`w-full flex items-center gap-3 p-3 rounded-lg transition ${activeTab === 'create' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
                         <PlusCircle size={20} /> Create New
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('colleges')}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition ${activeTab === 'colleges' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                    >
+                        <FolderPlus size={20} /> Manage Colleges
                     </button>
                 </nav>
 
@@ -591,6 +661,170 @@ export default function AdminDashboard() {
                                     Close Preview
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                )}
+                {/* VIEW 5: COLLEGE MANAGEMENT (New Dedicated Tab) */}
+                {activeTab === 'colleges' && (
+                    <div className="space-y-6">
+                        <h2 className="text-2xl font-bold text-slate-800">College & Batch Management</h2>
+
+                        {/* 1. Create College */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h3 className="font-bold text-lg mb-4 text-slate-700">1. Add Partner College</h3>
+                            <div className="flex gap-4">
+                                <input
+                                    type="text"
+                                    placeholder="Enter College Name"
+                                    className="border p-3 rounded-lg flex-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={newCollegeName}
+                                    onChange={(e) => setNewCollegeName(e.target.value)}
+                                />
+                                <button
+                                    onClick={handleCreateCollege}
+                                    className="bg-slate-900 text-white px-6 py-3 rounded-lg font-bold hover:bg-slate-800 transition"
+                                >
+                                    Add College
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 2. Create Course & Rolls */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h3 className="font-bold text-lg mb-4 text-slate-700">2. Generate Student Batch (Roll Numbers)</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <select
+                                    className="border p-3 rounded-lg bg-slate-50 font-medium"
+                                    onChange={(e) => setTargetCollegeId(e.target.value)}
+                                >
+                                    <option value="">Select Target College</option>
+                                    {collegesList.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                                </select>
+                                <input
+                                    type="text"
+                                    placeholder="Department / Course (e.g. MCA)"
+                                    className="border p-3 rounded-lg"
+                                    onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })}
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Start Roll No (e.g. 24102d020001)"
+                                    className="border p-3 rounded-lg"
+                                    onChange={(e) => setNewCourse({ ...newCourse, start: e.target.value })}
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="End Roll No (e.g. 24102d020131)"
+                                    className="border p-3 rounded-lg"
+                                    onChange={(e) => setNewCourse({ ...newCourse, end: e.target.value })}
+                                />
+                            </div>
+                            <button
+                                onClick={handleGenerateRolls}
+                                className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition"
+                            >
+                                Generate Batch Roll Numbers
+                            </button>
+                        </div>
+                        {/* 3. PREVIEW SECTION: Existing Colleges & Batches */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mt-8">
+                            <h3 className="font-bold text-lg mb-6 text-slate-800 flex items-center gap-2">
+                                <School size={20} className="text-blue-500" />
+                                Registered Colleges & Batches
+                            </h3>
+
+                            {collegesList.length === 0 ? (
+                                <p className="text-slate-500 italic">No colleges added yet.</p>
+                            ) : (
+                                <div className="grid gap-6">
+                                    {collegesList.map((college, colIndex) => (
+                                        <div key={college._id || colIndex} className="border border-slate-200 rounded-lg overflow-hidden">
+
+                                            {/* College Header */}
+                                            <div className="bg-slate-100 p-4 border-b border-slate-200 flex justify-between items-center">
+                                                <div className="flex items-center gap-3">
+                                                    <h4 className="font-bold text-slate-800 text-lg">{college.name}</h4>
+                                                    <button
+                                                        onClick={() => handleEditCollege(college._id, college.name)}
+                                                        className="text-slate-400 hover:text-blue-600 transition"
+                                                        title="Edit College Name"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                </div>
+                                                <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                                    {college.courses.length} Batches
+                                                </span>
+                                            </div>
+
+                                            {/* Batches List */}
+                                            <div className="p-4 space-y-4 bg-white">
+                                                {college.courses.length === 0 && <p className="text-sm text-slate-400">No courses added.</p>}
+
+                                                {college.courses.map((course, courseIndex) => {
+                                                    // Stats Calculation
+                                                    const totalSeats = course.rollNumbers?.length || 0;
+                                                    const registeredStudents = course.rollNumbers?.filter(r => r.isRegistered) || [];
+                                                    const registeredCount = registeredStudents.length;
+                                                    const startRoll = course.rollNumbers?.[0]?.number || 'N/A';
+                                                    const endRoll = course.rollNumbers?.[totalSeats - 1]?.number || 'N/A';
+
+                                                    return (
+                                                        <div key={course._id || courseIndex} className="border rounded-lg p-4 hover:shadow-md transition">
+                                                            <div className="flex justify-between items-start mb-3">
+                                                                <div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <h5 className="font-bold text-blue-600 text-md">{course.courseName} Dept</h5>
+                                                                        <button
+                                                                            onClick={() => handleEditCourse(college._id, course._id, course.courseName)}
+                                                                            className="text-slate-300 hover:text-blue-600 transition"
+                                                                            title="Edit Department"
+                                                                        >
+                                                                            <Edit2 size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                    <p className="text-xs text-slate-500 mt-1">
+                                                                        Range: <span className="font-mono bg-slate-100 px-1 rounded">{startRoll}</span> to <span className="font-mono bg-slate-100 px-1 rounded">{endRoll}</span>
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className={`text-xs font-bold px-2 py-1 rounded ${registeredCount > 0 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                                        {registeredCount} / {totalSeats} Filled
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Progress Bar */}
+                                                            <div className="w-full bg-slate-100 rounded-full h-2 mb-4">
+                                                                <div
+                                                                    className="bg-green-500 h-2 rounded-full transition-all duration-500"
+                                                                    style={{ width: `${totalSeats > 0 ? (registeredCount / totalSeats) * 100 : 0}%` }}
+                                                                ></div>
+                                                            </div>
+
+                                                            {/* List of Registered Students (Tag View) */}
+                                                            {registeredCount > 0 ? (
+                                                                <div className="bg-slate-50 p-3 rounded border border-slate-100">
+                                                                    <p className="text-xs font-bold text-slate-500 mb-2 uppercase">Registered Students:</p>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {registeredStudents.map((student, stdIndex) => (
+                                                                            <span key={student.number || stdIndex} className="text-xs bg-white border border-slate-200 px-2 py-1 rounded text-slate-700 font-mono shadow-sm">
+                                                                                {student.number}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-xs text-slate-400 italic">No students registered yet.</p>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

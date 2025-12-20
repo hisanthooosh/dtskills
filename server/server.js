@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs'); // For password security
+const collegeRoutes = require('./routes/college');
 
 const app = express();
 app.use(express.json());
@@ -181,4 +182,6 @@ app.post('/api/admin/students', async (req, res) => {
   const students = await Student.find().select('-password'); // Don't show passwords
   res.json(students);
 });
+
+app.use('/api/college', collegeRoutes);
 app.listen(5000, () => console.log("🚀 Server running on Port 5000"));
