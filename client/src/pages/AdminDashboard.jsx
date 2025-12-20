@@ -7,13 +7,15 @@ import {
     BookOpen,
     PlusCircle,
     LogOut,
-    Trash2,
+
     Search,
     FolderPlus,
     FileVideo,
     Save,
     ChevronDown,
-    ChevronRight
+    FileText, HelpCircle, Trash2, Edit3,
+    ChevronRight,
+    Eye, X
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -43,6 +45,13 @@ export default function AdminDashboard() {
         options: ['', '', '', ''],
         correctAnswer: 0
     });
+    // --- NEW: PREVIEW MODAL STATE ---
+    const [previewTopic, setPreviewTopic] = useState(null); // If not null, modal is open
+
+    const openPreview = (moduleIndex, topicIndex) => {
+        const topic = courseData.chapters[moduleIndex].topics[topicIndex];
+        setPreviewTopic(topic);
+    };
 
     useEffect(() => {
         fetchData();
@@ -392,59 +401,98 @@ export default function AdminDashboard() {
                         </div>
 
                         {/* Preview Section - WITH EDIT & DELETE */}
+                        {/* --- NEW DETAILED PREVIEW SECTION --- */}
                         {courseData.chapters.length > 0 && (
-                            <div className="bg-white p-6 rounded-xl shadow-lg border-t-4 border-green-500 mb-10">
-                                <h3 className="font-bold text-lg mb-4">Summary: {courseData.title}</h3>
+                            <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden mb-10">
+                                {/* Header */}
+                                <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
+                                    <div>
+                                        <h3 className="font-bold text-lg">Course Preview</h3>
+                                        <p className="text-xs text-slate-400">{courseData.title || "Untitled Course"}</p>
+                                    </div>
+                                    <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">
+                                        Draft Mode
+                                    </span>
+                                </div>
 
-                                <div className="space-y-4 mb-6 max-h-[500px] overflow-y-auto pr-2">
+                                <div className="p-6 bg-slate-50 space-y-6 max-h-[600px] overflow-y-auto">
                                     {courseData.chapters.map((c, i) => (
-                                        <div key={i} className="text-sm border rounded-lg overflow-hidden border-slate-200">
+                                        <div key={i} className="bg-white border border-slate-300 rounded-lg overflow-hidden shadow-sm">
 
                                             {/* MODULE HEADER */}
-                                            <div className="bg-slate-100 p-3 font-bold text-slate-700 flex justify-between items-center group">
-                                                <span>Module {i + 1}: {c.title}</span>
+                                            <div className="bg-slate-100 p-3 border-b border-slate-200 flex justify-between items-center group">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                                        Module {i + 1}
+                                                    </span>
+                                                    <span className="font-bold text-slate-800">{c.title}</span>
+                                                </div>
                                                 <button
                                                     onClick={() => deleteModule(i)}
-                                                    className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-1"
-                                                    title="Delete Module"
+                                                    className="text-slate-400 hover:text-red-600 transition p-1 hover:bg-red-50 rounded"
+                                                    title="Delete Entire Module"
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
 
                                             {/* TOPICS LIST */}
-                                            <div className="p-2 bg-white space-y-1">
+                                            <div className="divide-y divide-slate-100">
                                                 {c.topics.length === 0 && (
-                                                    <p className="text-xs text-slate-400 italic p-2">No topics added yet</p>
+                                                    <div className="p-4 text-center text-slate-400 text-sm italic">
+                                                        No topics added yet. Use the form above.
+                                                    </div>
                                                 )}
 
                                                 {c.topics.map((t, j) => (
-                                                    <div key={j} className="group flex justify-between items-center text-xs pl-3 py-2 border-l-2 border-blue-100 hover:bg-blue-50 transition rounded-r">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-medium text-slate-700">{t.title}</span>
-                                                            {t.quizzes && t.quizzes.length > 0 && (
-                                                                <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                                                                    {t.quizzes.length} Q
-                                                                </span>
-                                                            )}
+                                                    <div key={j} className="p-3 pl-4 hover:bg-blue-50 transition flex justify-between items-start group">
+
+                                                        {/* Topic Info */}
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-700 mb-1">{t.title}</p>
+
+                                                            {/* Content Indicators (Icons) */}
+                                                            <div className="flex gap-3 text-xs text-slate-500">
+                                                                {t.video && (
+                                                                    <span className="flex items-center gap-1 text-blue-600 bg-blue-100 px-1.5 rounded">
+                                                                        <FileVideo size={12} /> Video
+                                                                    </span>
+                                                                )}
+                                                                {t.content && (
+                                                                    <span className="flex items-center gap-1 text-slate-600 bg-slate-100 px-1.5 rounded">
+                                                                        <FileText size={12} /> Notes
+                                                                    </span>
+                                                                )}
+                                                                {t.quizzes && t.quizzes.length > 0 && (
+                                                                    <span className="flex items-center gap-1 text-green-700 bg-green-100 px-1.5 rounded font-medium">
+                                                                        <HelpCircle size={12} /> {t.quizzes.length} Questions
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
 
-                                                        {/* TOPIC ACTIONS (Edit / Delete) */}
-                                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition mr-2">
+                                                        {/* Actions (Preview / Edit / Delete) */}
+                                                        <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition items-center">
+                                                            {/* PREVIEW BUTTON */}
+                                                            <button
+                                                                onClick={() => openPreview(i, j)}
+                                                                className="text-xs bg-white border border-slate-200 text-slate-600 px-2 py-1 rounded hover:bg-slate-800 hover:text-white transition flex items-center gap-1"
+                                                                title="Student View"
+                                                            >
+                                                                <Eye size={12} /> View
+                                                            </button>
+
                                                             <button
                                                                 onClick={() => editTopic(i, j)}
-                                                                className="text-blue-400 hover:text-blue-600 p-1 hover:bg-blue-100 rounded"
-                                                                title="Edit Topic"
+                                                                className="text-xs bg-white border border-blue-200 text-blue-600 px-2 py-1 rounded hover:bg-blue-600 hover:text-white transition"
                                                             >
-                                                                {/* Edit Icon (using FolderPlus as placeholder or import Edit) */}
-                                                                ✏️
+                                                                Edit
                                                             </button>
                                                             <button
                                                                 onClick={() => deleteTopic(i, j)}
-                                                                className="text-red-400 hover:text-red-600 p-1 hover:bg-red-100 rounded"
-                                                                title="Delete Topic"
+                                                                className="text-slate-400 hover:text-red-500 p-1 hover:bg-red-50 rounded"
                                                             >
-                                                                <Trash2 size={14} />
+                                                                <Trash2 size={16} />
                                                             </button>
                                                         </div>
                                                     </div>
@@ -454,14 +502,95 @@ export default function AdminDashboard() {
                                     ))}
                                 </div>
 
-                                <button onClick={publishCourse} className="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-green-700 flex items-center justify-center gap-2">
-                                    <Save /> Publish Course Live
-                                </button>
+                                {/* Footer Publish Action */}
+                                <div className="p-4 bg-white border-t border-slate-200">
+                                    <div className="flex justify-between items-center text-sm text-slate-500 mb-4 px-2">
+                                        <span>Total Modules: {courseData.chapters.length}</span>
+                                        <span>Total Price: ₹{courseData.price}</span>
+                                    </div>
+                                    <button
+                                        onClick={publishCourse}
+                                        className="w-full bg-green-600 text-white py-3 rounded-xl font-bold text-lg shadow-md hover:bg-green-700 hover:shadow-lg transition flex items-center justify-center gap-2"
+                                    >
+                                        <Save size={20} /> Publish Course Live
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
                 )}
+                {/* --- STUDENT VIEW MODAL --- */}
+                {previewTopic && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                        <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
 
+                            {/* Modal Header */}
+                            <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                    <Eye size={18} className="text-blue-400" />
+                                    <span className="font-bold">Student View Preview</span>
+                                </div>
+                                <button onClick={() => setPreviewTopic(null)} className="text-slate-400 hover:text-white">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            {/* Modal Body (Scrollable) */}
+                            <div className="p-6 overflow-y-auto">
+                                <h2 className="text-2xl font-bold text-slate-900 mb-4">{previewTopic.title}</h2>
+
+                                {/* 1. Video Preview */}
+                                {previewTopic.video ? (
+                                    <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg mb-6">
+                                        <iframe
+                                            className="w-full h-full"
+                                            src={`https://www.youtube.com/embed/${previewTopic.video.split('/').pop()}`}
+                                            title="Preview"
+                                        ></iframe>
+                                    </div>
+                                ) : (
+                                    <div className="bg-slate-100 p-4 rounded-lg mb-6 text-slate-500 text-sm italic text-center">
+                                        No Video Content
+                                    </div>
+                                )}
+
+                                {/* 2. Notes Preview */}
+                                <div className="prose max-w-none text-slate-600 mb-8 bg-slate-50 p-6 rounded-xl border border-slate-100">
+                                    <h3 className="font-bold text-slate-800 mb-2 border-b pb-2">Lecture Notes</h3>
+                                    <p className="whitespace-pre-wrap text-sm">{previewTopic.content || "No text content added."}</p>
+                                </div>
+
+                                {/* 3. Quiz Preview */}
+                                {previewTopic.quizzes && previewTopic.quizzes.length > 0 && (
+                                    <div className="border border-blue-100 rounded-xl p-4 bg-white shadow-sm">
+                                        <h3 className="font-bold text-blue-800 mb-3">Quiz Preview ({previewTopic.quizzes.length} Questions)</h3>
+                                        <div className="space-y-4">
+                                            {previewTopic.quizzes.map((q, idx) => (
+                                                <div key={idx} className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-sm">
+                                                    <p className="font-bold text-slate-800 mb-2">Q{idx + 1}: {q.question}</p>
+                                                    <ul className="grid grid-cols-2 gap-2">
+                                                        {q.options.map((opt, i) => (
+                                                            <li key={i} className={`p-2 border rounded ${i === q.correctAnswer ? 'bg-green-100 border-green-400 text-green-800 font-bold' : 'bg-white text-slate-500'}`}>
+                                                                {opt}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-4 border-t bg-slate-50 flex justify-end">
+                                <button onClick={() => setPreviewTopic(null)} className="px-6 py-2 bg-slate-800 text-white rounded-lg font-bold">
+                                    Close Preview
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );
