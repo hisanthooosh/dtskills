@@ -19,8 +19,9 @@ export default function Login() {
       // Save User Data
       localStorage.setItem('student', JSON.stringify(res.data));
       
-      // Redirect
-      navigate('/dashboard/my-learning');
+      // --- REDIRECT TO MAIN DASHBOARD ---
+      navigate('/dashboard');
+      
     } catch (err) {
       setError(err.response?.data?.message || "Invalid credentials. Please try again.");
     } finally {
@@ -158,7 +159,7 @@ export default function Login() {
         </div>
       </div>
 
-      {/* --- RIGHT SIDE: BANNER IMAGE --- */}
+      {/* --- RIGHT SIDE: BANNER IMAGE (Pro Design Restored) --- */}
       <div className="hidden lg:block relative w-0 flex-1 bg-blue-600 overflow-hidden">
         {/* Abstract Background Shapes */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-900">

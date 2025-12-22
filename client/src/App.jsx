@@ -1,30 +1,32 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import LandingPage from './pages/LandingPage';
-import Register from './pages/Register';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import LandingPage from './pages/LandingPage';
 import DashboardLayout from './pages/dashboard/DashboardLayout';
-import CourseCatalog from './pages/dashboard/CourseCatalog';
 import MyLearning from './pages/dashboard/MyLearning';
+import CourseCatalog from './pages/dashboard/CourseCatalog';
 import Classroom from './pages/dashboard/Classroom';
-import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Pages */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-
-        {/* Protected Dashboard Routes */}
+        <Route path="/register" element={<Register />} />
+        
+        {/* --- DASHBOARD ROUTES --- */}
         <Route path="/dashboard" element={<DashboardLayout />}>
-           {/* This is the default view (My Courses) */}
-           <Route index element={<MyLearning />} /> 
-           <Route path="courses" element={<CourseCatalog />} />
-           <Route path="classroom/:courseId" element={<Classroom />} />
+          
+          {/* This 'index' means: Show MyLearning when URL is exactly /dashboard */}
+          <Route index element={<MyLearning />} />
+          
+          <Route path="my-learning" element={<MyLearning />} />
+          <Route path="catalog" element={<CourseCatalog />} />
+          <Route path="classroom/:courseId" element={<Classroom />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
+
       </Routes>
     </Router>
   );
