@@ -16,13 +16,20 @@ export default function MyLearning() {
       return;
     }
 
-    axios.get(`http://localhost:5000/api/student/${studentLocal._id}`)
-      .then(res => {
+    const fetchStudentData = async () => {
+      try {
+        const res = await axios.get(`http://localhost:5000/api/student/${studentLocal._id}`);
+        // Ensure we handle cases where enrolledCourses might be undefined
         setEnrolledCourses(res.data.enrolledCourses || []);
         setLoading(false);
-      })
-      .catch(err => setLoading(false));
-  }, [navigate]);
+      } catch (err) {
+        console.error("Error fetching my learning:", err);
+        setLoading(false);
+      }
+    };
+
+    fetchStudentData();
+  }, [navigate, studentLocal?._id]); // Safe dependency check
 
   if (loading) return <div className="p-10 text-center text-gray-500">Loading your classroom...</div>;
 
@@ -42,25 +49,30 @@ export default function MyLearning() {
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-6">
-          {enrolledCourses.map((enrollment) => {
+          {enrolledCourses.map((enrollment, index) => {
+            // --- SAFETY CHECK 1: Check if enrollment exists ---
+            if (!enrollment) return null;
+
+            // --- SAFETY CHECK 2: Check if courseId is populated ---
             const course = enrollment.courseId;
-            if (!course) return null;
+            // If course is null (deleted) or just a string ID (not populated), skip rendering to prevent crash
+            if (!course || typeof course !== 'object') return null;
 
             // Calculate Progress
-            const totalTopics = course.modules?.reduce((acc, mod) => acc + mod.topics.length, 0) || 0;
+            const totalTopics = course.modules?.reduce((acc, mod) => acc + (mod.topics?.length || 0), 0) || 0;
             const completedCount = enrollment.completedTopics?.length || 0;
             const progress = totalTopics === 0 ? 0 : Math.round((completedCount / totalTopics) * 100);
 
             return (
-              <div key={course._id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+              <div key={course._id || index} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full">
                       Active Internship
                     </span>
-                    <h3 className="text-lg font-bold text-slate-900 mt-2">{course.title}</h3>
+                    <h3 className="text-lg font-bold text-slate-900 mt-2">{course.title || "Untitled Course"}</h3>
                   </div>
-                  <Award size={24} className="text-blue-500"/>
+                  <Award size={24} className="text-blue-500" />
                 </div>
 
                 <div className="mt-auto">
@@ -68,19 +80,22 @@ export default function MyLearning() {
                     <span>Progress</span>
                     <span>{progress}%</span>
                   </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full mb-4">
-                    <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${progress}%` }}></div>
+
+                  {/* Progress Bar Visual */}
+                  <div className="w-full bg-slate-100 h-2 rounded-full mb-4 overflow-hidden">
+                    <div
+                      className="bg-blue-600 h-full rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${progress}%` }}
+                    ></div>
                   </div>
-                  
-                  {/* 👇👇👇 THIS IS THE FIX 👇👇👇 */}
+
+                  {/* Action Button */}
                   <Link 
-                    to={`/Classroom/${course._id}`}  
+                    to={`/classroom/${course._id}`}  
                     className="block w-full text-center bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2"
                   >
                     <PlayCircle size={18} /> Continue Learning
                   </Link>
-                  {/* 👆👆👆 REMOVED '/dashboard' FROM LINK 👆👆👆 */}
-                  
                 </div>
               </div>
             );

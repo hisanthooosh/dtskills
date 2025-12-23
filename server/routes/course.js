@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Course = require('../models/Course'); 
+const Course = require('../models/Course');
 const User = require('../models/User');
 
 // --- 1. GET Single Course ---
@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
 // We map the incoming data (video, content) to the schema (youtubeLinks, textContent)
 router.post('/publish', async (req, res) => {
   const { title, description, price, modules, adminSecret } = req.body;
-  
+
   if (adminSecret !== "doneswari_admin_2025") {
     return res.status(403).json({ message: "Unauthorized" });
   }
@@ -40,7 +40,7 @@ router.post('/publish', async (req, res) => {
       topics: mod.topics.map(topic => ({
         title: topic.title,
         // Fix 1: Map 'content' -> 'textContent'
-        textContent: topic.content || topic.textContent, 
+        textContent: topic.content || topic.textContent,
         // Fix 2: Map single 'video' string -> 'youtubeLinks' Array
         youtubeLinks: topic.video ? [{ title: "Lesson Video", url: topic.video }] : [],
         // Fix 3: Map 'quizzes' -> 'quiz'
@@ -63,32 +63,40 @@ router.post('/publish', async (req, res) => {
   }
 });
 
-// --- 4. Mark Topic as Complete ---
+// --- PASTE THIS IN server/routes/course.js ---
+
+// 1. Mark Topic as Complete
 router.post('/complete-topic', async (req, res) => {
   const { userId, courseId, topicId } = req.body;
 
   try {
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) return res.status(404).json({ msg: "User not found" });
 
-    const enrollment = user.enrolledCourses.find(c => c.courseId.toString() === courseId);
-    
-    if (!enrollment) return res.status(404).json({ message: "Not enrolled" });
+    // Check if user is already enrolled in this course
+    const enrollmentIndex = user.enrolledCourses.findIndex(
+      (c) => c.courseId.toString() === courseId
+    );
 
-    // Safety check for array
-    if (!enrollment.completedTopics) enrollment.completedTopics = [];
-
-    if (!enrollment.completedTopics.includes(topicId)) {
-      enrollment.completedTopics.push(topicId);
-      user.markModified('enrolledCourses'); // Crucial for nested arrays
-      await user.save();
+    if (enrollmentIndex === -1) {
+      // If not enrolled, enroll them and add the topic
+      user.enrolledCourses.push({
+        courseId: courseId,
+        completedTopics: [topicId]
+      });
+    } else {
+      // If enrolled, check if topic is already completed
+      const enrollment = user.enrolledCourses[enrollmentIndex];
+      if (!enrollment.completedTopics.includes(topicId)) {
+        enrollment.completedTopics.push(topicId);
+      }
     }
-    
-    res.json({ message: 'Progress updated', progress: enrollment.completedTopics });
+
+    await user.save();
+    res.json({ msg: "Progress saved", progress: user.enrolledCourses });
   } catch (err) {
-    console.error("Backend Error:", err);
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).send("Server Error");
   }
 });
-
 module.exports = router;
