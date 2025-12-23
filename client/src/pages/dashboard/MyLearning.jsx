@@ -19,7 +19,6 @@ export default function MyLearning() {
     const fetchStudentData = async () => {
       try {
         const res = await axios.get(`http://localhost:5000/api/student/${studentLocal._id}`);
-        // Ensure we handle cases where enrolledCourses might be undefined
         setEnrolledCourses(res.data.enrolledCourses || []);
         setLoading(false);
       } catch (err) {
@@ -29,7 +28,7 @@ export default function MyLearning() {
     };
 
     fetchStudentData();
-  }, [navigate, studentLocal?._id]); // Safe dependency check
+  }, [navigate, studentLocal?._id]);
 
   if (loading) return <div className="p-10 text-center text-gray-500">Loading your classroom...</div>;
 
@@ -50,12 +49,9 @@ export default function MyLearning() {
       ) : (
         <div className="grid md:grid-cols-2 gap-6">
           {enrolledCourses.map((enrollment, index) => {
-            // --- SAFETY CHECK 1: Check if enrollment exists ---
             if (!enrollment) return null;
-
-            // --- SAFETY CHECK 2: Check if courseId is populated ---
             const course = enrollment.courseId;
-            // If course is null (deleted) or just a string ID (not populated), skip rendering to prevent crash
+            // Handle cases where course data might be missing or deleted
             if (!course || typeof course !== 'object') return null;
 
             // Calculate Progress
@@ -72,7 +68,7 @@ export default function MyLearning() {
                     </span>
                     <h3 className="text-lg font-bold text-slate-900 mt-2">{course.title || "Untitled Course"}</h3>
                   </div>
-                  <Award size={24} className="text-blue-500" />
+                  <Award size={24} className="text-blue-500"/>
                 </div>
 
                 <div className="mt-auto">
@@ -80,18 +76,17 @@ export default function MyLearning() {
                     <span>Progress</span>
                     <span>{progress}%</span>
                   </div>
-
-                  {/* Progress Bar Visual */}
+                  
                   <div className="w-full bg-slate-100 h-2 rounded-full mb-4 overflow-hidden">
-                    <div
-                      className="bg-blue-600 h-full rounded-full transition-all duration-500 ease-out"
+                    <div 
+                      className="bg-blue-600 h-full rounded-full transition-all duration-500 ease-out" 
                       style={{ width: `${progress}%` }}
                     ></div>
                   </div>
-
-                  {/* Action Button */}
+                  
+                  {/* FIX: Use backticks `` instead of single quotes '' */}
                   <Link 
-                    to={`/classroom/${course._id}`}  
+                    to={`/classroom/${course._id}`} 
                     className="block w-full text-center bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2"
                   >
                     <PlayCircle size={18} /> Continue Learning

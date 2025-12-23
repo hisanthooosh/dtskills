@@ -11,7 +11,7 @@ const Course = require('./models/Course');
 const authRoutes = require('./routes/auth');
 const collegeRoutes = require('./routes/college');
 const courseRoutes = require('./routes/course'); // Fixed typo here
-const studentRoutes = require('./routes/student');
+const studentRoutes = require('./routes/student'); // <--- 1. ADD THIS IMPORT
 
 const app = express();
 
@@ -28,7 +28,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/api/auth', authRoutes);
 app.use('/api/college', collegeRoutes);
 app.use('/api/courses', courseRoutes);
-app.use('/api/student', studentRoutes); // <--- ADD THIS ROUTE
+app.use('/api/student', studentRoutes);
 
 // --- PUBLIC DATA ROUTES ---
 

@@ -35,8 +35,10 @@ function App() {
           <Route path="profile" element={<Profile />} />
         </Route>
 
-        {/* Classroom */}
+        {/* --- 👇 FIX: SUPPORT BOTH LOWERCASE AND UPPERCASE PATHS 👇 --- */}
         <Route path="/classroom/:id" element={<Classroom />} />
+        <Route path="/Classroom/:id" element={<Classroom />} />
+        
       </Routes>
     </Router>
   );
