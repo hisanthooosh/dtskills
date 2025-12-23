@@ -4,12 +4,13 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 // --- IMPORT MODELS ---
-const User = require('./models/User');     // Replaces inline Student model
-const Course = require('./models/Course'); // Replaces inline Course model
+const User = require('./models/User');
+const Course = require('./models/Course');
 
 // --- IMPORT ROUTES ---
-const authRoutes = require('./routes/auth');       // Handles /register and /login
-const collegeRoutes = require('./routes/college'); // Handles college data
+const authRoutes = require('./routes/auth');
+const collegeRoutes = require('./routes/college');
+const courseRoutes = require('./routes/course'); // Fixed typo here
 
 const app = express();
 
@@ -23,9 +24,9 @@ mongoose.connect(process.env.MONGO_URI)
   .catch((err) => console.log("❌ DB Error:", err));
 
 // --- MOUNT MODULAR ROUTES ---
-// This single line replaces the 40 lines of register/login code you had before
-app.use('/api/auth', authRoutes);       
-app.use('/api/college', collegeRoutes); 
+app.use('/api/auth', authRoutes);
+app.use('/api/college', collegeRoutes);
+app.use('/api/courses', courseRoutes);
 
 // --- PUBLIC DATA ROUTES ---
 
@@ -39,22 +40,63 @@ app.get('/api/courses', async (req, res) => {
   }
 });
 
-// Seed Dummy Courses (For testing)
+// Seed Dummy Courses (UPDATED: Uses correct 'modules' structure)
 app.get('/api/seed', async (req, res) => {
-  await Course.deleteMany({}); 
-  await Course.create([
-    { 
-      title: "MERN Stack Internship", 
-      description: "Full Stack Web Development with React & Node.",
-      chapters: [{ title: "Intro", topics: [{ title: "Welcome" }] }] 
-    },
-    { 
-      title: "Python AI/ML Internship", 
-      description: "Learn Machine Learning basics.",
-      chapters: [{ title: "Intro to AI", topics: [{ title: "What is AI?" }] }] 
-    }
-  ]);
-  res.json({ message: "2 Dummy Courses Created" });
+  try {
+    await Course.deleteMany({});
+    
+    await Course.create([
+      { 
+        title: "MERN Stack Internship", 
+        description: "Full Stack Web Development with React & Node.",
+        thumbnail: "https://via.placeholder.com/150",
+        price: 0,
+        modules: [
+          { 
+            title: "Introduction", 
+            topics: [
+              { 
+                title: "Welcome to MERN", 
+                textContent: "The MERN stack consists of MongoDB, Express, React, and Node.js. It is one of the most popular stacks for building full-stack web applications.",
+                youtubeLinks: [
+                  { title: "MERN Stack in 100 Seconds", url: "https://www.youtube.com/watch?v=98BzS5Oz5E4" }
+                ],
+                quiz: [
+                  {
+                    question: "What does the 'R' stand for in MERN?",
+                    options: ["Ruby", "React", "Rust", "Redis"],
+                    correctAnswer: 1
+                  }
+                ]
+              }
+            ] 
+          }
+        ] 
+      },
+      { 
+        title: "Python AI/ML Internship", 
+        description: "Learn Machine Learning basics.",
+        thumbnail: "https://via.placeholder.com/150",
+        price: 0,
+        modules: [
+          { 
+            title: "Intro to AI", 
+            topics: [
+              { 
+                title: "What is AI?", 
+                textContent: "Artificial Intelligence (AI) refers to the simulation of human intelligence in machines.",
+                youtubeLinks: [],
+                quiz: []
+              }
+            ] 
+          }
+        ] 
+      }
+    ]);
+    res.json({ message: "✅ Database Seeded Successfully with Correct Data!" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- STUDENT ROUTES ---
@@ -62,7 +104,6 @@ app.get('/api/seed', async (req, res) => {
 // Get My Profile (With Enrolled Courses)
 app.get('/api/student/:id', async (req, res) => {
   try {
-    // We use 'User' now instead of 'Student'
     const student = await User.findById(req.params.id).populate('enrolledCourses.courseId');
     res.json(student);
   } catch (err) {
@@ -74,25 +115,29 @@ app.get('/api/student/:id', async (req, res) => {
 app.post('/api/student/enroll', async (req, res) => {
   const { studentId, courseId } = req.body;
   
-  const student = await User.findById(studentId);
-  
-  // Check if already enrolled
-  const isEnrolled = student.enrolledCourses.find(c => c.courseId.toString() === courseId);
-  if (isEnrolled) return res.json({ message: "Already enrolled" });
+  try {
+    const student = await User.findById(studentId);
+    if (!student) return res.status(404).json({ message: "Student not found" });
 
-  student.enrolledCourses.push({ courseId });
-  await student.save();
-  
-  res.json(student);
+    // Check if already enrolled
+    const isEnrolled = student.enrolledCourses.find(c => c.courseId.toString() === courseId);
+    if (isEnrolled) return res.json({ message: "Already enrolled" });
+
+    student.enrolledCourses.push({ courseId });
+    await student.save();
+    
+    res.json(student);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// --- ADMIN ROUTES (Restored from your old file) ---
+// --- ADMIN ROUTES ---
 
 // 1. Create a New Course
 app.post('/api/admin/course', async (req, res) => {
-  const { title, description, price, chapters, adminSecret } = req.body;
+  const { title, description, price, modules, adminSecret } = req.body;
   
-  // Simple Security Check
   if (adminSecret !== "doneswari_admin_2025") {
     return res.status(403).json({ message: "Unauthorized: Wrong Secret Key" });
   }
@@ -101,7 +146,7 @@ app.post('/api/admin/course', async (req, res) => {
     title,
     description,
     price,
-    chapters
+    modules
   });
 
   res.json(newCourse);
@@ -116,7 +161,7 @@ app.delete('/api/admin/course/:id', async (req, res) => {
   res.json({ message: "Course Deleted" });
 });
 
-// 3. Get All Students (For HOD Report)
+// 3. Get All Students
 app.post('/api/admin/students', async (req, res) => {
   const { adminSecret } = req.body;
   if (adminSecret !== "doneswari_admin_2025") return res.status(403).json({ message: "Unauthorized" });

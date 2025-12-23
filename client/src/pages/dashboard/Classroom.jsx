@@ -1,207 +1,419 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import ReactMarkdown from 'react-markdown'; // <--- Imported the formatter
-import { BookOpen, CheckCircle, ExternalLink, ChevronRight, HelpCircle } from 'lucide-react';
+import { 
+  BookOpen, 
+  Youtube, 
+  HelpCircle, 
+  CheckCircle, 
+  ChevronRight, 
+  ArrowLeft,
+  Lock,
+  PlayCircle,
+  FileText
+} from 'lucide-react';
 
 const Classroom = () => {
-  const { id } = useParams(); // Course ID
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [course, setCourse] = useState(null);
-  const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
-  const [currentTopicIndex, setCurrentTopicIndex] = useState(0);
-  const [viewMode, setViewMode] = useState('reading'); // 'reading' or 'exam'
-  const [quizAnswers, setQuizAnswers] = useState({});
-  const [quizScore, setQuizScore] = useState(null);
+  
+  // Navigation State
+  const [activeModuleIndex, setActiveModuleIndex] = useState(0);
+  const [activeTopicIndex, setActiveTopicIndex] = useState(0);
+  
+  // FLOW STATE: 'reading' -> 'watching' -> 'quiz'
+  const [currentStep, setCurrentStep] = useState('reading');
+  const [completedTopics, setCompletedTopics] = useState([]);
 
-  // --- 1. Fetch Course Data ---
+  // Auth State
+  const studentLocal = JSON.parse(localStorage.getItem('student'));
+  const userId = studentLocal ? studentLocal._id : null;
+
   useEffect(() => {
-    const fetchCourse = async () => {
-      try {
-        const res = await axios.get(`http://localhost:5000/api/courses`);
-        // Note: In a real app, you'd fetch specific course by ID. 
-        // For now, we grab the first one matching or just the first one.
-        const foundCourse = res.data.find(c => c._id === id) || res.data[0];
-        setCourse(foundCourse);
-      } catch (err) {
-        console.error("Failed to load course", err);
+    if (!userId) {
+      navigate('/login');
+      return;
+    }
+    fetchCourseData();
+  }, [id, userId]);
+
+  const fetchCourseData = async () => {
+    try {
+      const res = await axios.get(`http://localhost:5000/api/courses/${id}`);
+      setCourse(res.data);
+    } catch (err) {
+      console.error("Error:", err);
+    }
+  };
+
+  if (!course) return <div className="min-h-screen flex items-center justify-center text-slate-500 font-medium">Loading Class...</div>;
+  if (!course.modules?.length) return <div className="p-10 text-center text-red-500">Course content is empty.</div>;
+
+  const currentModule = course.modules[activeModuleIndex];
+  const currentTopic = currentModule?.topics[activeTopicIndex];
+
+  // --- HELPERS ---
+
+  const getEmbedUrl = (url) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+  };
+
+  const handleTopicClick = (mIdx, tIdx) => {
+    setActiveModuleIndex(mIdx);
+    setActiveTopicIndex(tIdx);
+    setCurrentStep('reading'); // Reset flow when switching topics manually
+  };
+
+  // --- FLOW HANDLERS (UPDATED: NO SKIPPING) ---
+
+  // 1. Finish Reading -> Always go to Watching
+  const handleFinishReading = () => {
+    setCurrentStep('watching');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 2. Finish Watching -> Always go to Quiz
+  const handleFinishWatching = () => {
+    setCurrentStep('quiz');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 3. Mark Complete API Call & Navigation
+  const completeTopic = async () => {
+    try {
+      // 1. Optimistic UI Update
+      if (!completedTopics.includes(currentTopic._id)) {
+        setCompletedTopics([...completedTopics, currentTopic._id]);
       }
-    };
-    fetchCourse();
-  }, [id]);
 
-  if (!course) return <div className="p-10 text-center">Loading Classroom...</div>;
+      // 2. Backend Call
+      await axios.post('http://localhost:5000/api/courses/complete-topic', {
+        userId,
+        courseId: id,
+        topicId: currentTopic._id
+      });
 
-  const currentChapter = course.chapters[currentChapterIndex];
-  const currentTopic = currentChapter.topics[currentTopicIndex];
-
-  // --- 2. Handlers ---
-
-  const handleMarkAsRead = () => {
-    // Switch to Exam Mode
-    window.scrollTo(0, 0);
-    setViewMode('exam');
-    setQuizScore(null); // Reset score
-    setQuizAnswers({}); // Reset answers
+      // 3. Move to next
+      goToNextTopic();
+    } catch (err) {
+      alert("Error saving progress. Please check internet.");
+    }
   };
 
-  const handleQuizSubmit = async () => {
-    // Calculate Score
-    let score = 0;
-    currentTopic.quizzes.forEach((q, idx) => {
-      if (quizAnswers[idx] === q.correctAnswer) score++;
-    });
-    setQuizScore(score);
+  const goToNextTopic = () => {
+    setCurrentStep('reading'); // Reset flow for next topic
 
-    // If score is good (e.g., > 50%), mark topic as complete in Backend
-    // For now, we just assume completion:
-    alert(`You scored ${score} / ${currentTopic.quizzes.length}. Topic Completed!`);
-  };
-
-  const handleQuizOptionSelect = (qIdx, optionIdx) => {
-    setQuizAnswers(prev => ({ ...prev, [qIdx]: optionIdx }));
+    if (activeTopicIndex < currentModule.topics.length - 1) {
+      setActiveTopicIndex(activeTopicIndex + 1);
+    } else if (activeModuleIndex < course.modules.length - 1) {
+      setActiveModuleIndex(activeModuleIndex + 1);
+      setActiveTopicIndex(0);
+    } else {
+      alert("🎉 Course Completed! You are amazing!");
+      navigate('/dashboard/profile'); 
+    }
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
       
-      {/* LEFT SIDEBAR: Navigation */}
-      <div className="w-1/4 bg-white border-r border-gray-200 overflow-y-auto">
-        <div className="p-5 border-b">
-          <h2 className="font-bold text-lg text-blue-700">{course.title}</h2>
+      {/* --- SIDEBAR --- */}
+      <aside className="w-80 bg-white border-r border-slate-200 flex flex-col h-full z-20 shadow-lg">
+        <div className="p-5 border-b border-slate-100">
+          <button onClick={() => navigate('/dashboard/my-learning')} className="flex items-center text-slate-500 hover:text-blue-600 text-sm font-medium mb-3 transition">
+            <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
+          </button>
+          <h2 className="font-bold text-lg text-slate-800 leading-tight">{course.title}</h2>
         </div>
-        <div>
-          {course.chapters.map((chap, cIdx) => (
-            <div key={cIdx} className="mb-2">
-              <div className="bg-gray-100 p-3 font-semibold text-gray-700 text-sm">
-                {chap.title}
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {course.modules.map((mod, mIdx) => (
+            <div key={mIdx} className="border-b border-slate-50">
+              <div className="bg-slate-50/50 px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider sticky top-0 backdrop-blur-sm">
+                {mod.title}
               </div>
-              {chap.topics.map((topic, tIdx) => (
-                <div 
-                  key={tIdx}
-                  onClick={() => {
-                    setCurrentChapterIndex(cIdx);
-                    setCurrentTopicIndex(tIdx);
-                    setViewMode('reading'); // Reset to reading when switching topics
-                  }}
-                  className={`p-3 pl-6 cursor-pointer text-sm flex items-center gap-2 hover:bg-blue-50
-                    ${(cIdx === currentChapterIndex && tIdx === currentTopicIndex) ? 'bg-blue-100 text-blue-700 border-r-4 border-blue-600' : 'text-gray-600'}
-                  `}
-                >
-                  {viewMode === 'exam' && cIdx === currentChapterIndex && tIdx === currentTopicIndex ? 
-                    <HelpCircle size={16} /> : <BookOpen size={16} />
-                  }
-                  {topic.title}
+              <div>
+                {mod.topics.map((topic, tIdx) => {
+                  const isActive = activeModuleIndex === mIdx && activeTopicIndex === tIdx;
+                  const isCompleted = completedTopics.includes(topic._id);
+
+                  return (
+                    <button
+                      key={tIdx}
+                      onClick={() => handleTopicClick(mIdx, tIdx)}
+                      className={`w-full text-left px-5 py-4 flex items-start gap-3 transition-all duration-200 border-l-4 ${
+                        isActive 
+                          ? 'bg-blue-50 border-blue-600' 
+                          : 'border-transparent hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className={`mt-0.5 ${isCompleted ? 'text-green-500' : (isActive ? 'text-blue-600' : 'text-slate-400')}`}>
+                        {isCompleted ? <CheckCircle size={18} /> : (isActive ? <div className="w-4 h-4 rounded-full border-4 border-blue-600" /> : <div className="w-4 h-4 rounded-full border-2 border-slate-300" />)}
+                      </div>
+                      <div>
+                        <p className={`text-sm font-medium ${isActive ? 'text-blue-700' : 'text-slate-700'}`}>{topic.title}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      {/* --- MAIN CONTENT --- */}
+      <main className="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-10 relative">
+        <div className="max-w-4xl mx-auto pb-20">
+          
+          {/* Progress Stepper */}
+          <div className="mb-8 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+             <StepIndicator step="reading" current={currentStep} label="Read Notes" icon={FileText} />
+             <div className={`h-1 flex-1 mx-4 rounded-full ${['watching', 'quiz'].includes(currentStep) ? 'bg-blue-600' : 'bg-slate-100'}`} />
+             
+             <StepIndicator step="watching" current={currentStep} label="Watch Video" icon={Youtube} />
+             <div className={`h-1 flex-1 mx-4 rounded-full ${['quiz'].includes(currentStep) ? 'bg-blue-600' : 'bg-slate-100'}`} />
+             
+             <StepIndicator step="quiz" current={currentStep} label="Take Quiz" icon={HelpCircle} />
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden min-h-[500px]">
+            
+            {/* Header */}
+            <div className="bg-slate-900 text-white p-8">
+              <h1 className="text-3xl font-bold">{currentTopic.title}</h1>
+            </div>
+
+            <div className="p-8 md:p-12">
+              
+              {/* STEP 1: READING */}
+              {currentStep === 'reading' && (
+                <div className="animate-in fade-in duration-500">
+                  <div className="prose lg:prose-lg text-slate-600 max-w-none mb-10 leading-relaxed">
+                    {currentTopic.textContent ? (
+                      <p className="whitespace-pre-line">{currentTopic.textContent}</p>
+                    ) : (
+                      <p className="italic text-slate-400 bg-slate-100 p-4 rounded-lg">No written content available for this topic.</p>
+                    )}
+                  </div>
+                  <div className="flex justify-end pt-6 border-t border-slate-100">
+                    <button onClick={handleFinishReading} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-200">
+                      I've Read This <ChevronRight size={20} />
+                    </button>
+                  </div>
                 </div>
-              ))}
+              )}
+
+              {/* STEP 2: WATCHING */}
+              {currentStep === 'watching' && (
+                <div className="animate-in slide-in-from-right duration-500">
+                  <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <Youtube className="text-red-600" /> Recommended Videos
+                  </h3>
+                  
+                  {currentTopic.youtubeLinks && currentTopic.youtubeLinks.length > 0 ? (
+                    <div className="space-y-8">
+                      {currentTopic.youtubeLinks.map((link, idx) => {
+                        const embedUrl = getEmbedUrl(link.url);
+                        return (
+                          <div key={idx} className="space-y-2">
+                            <p className="font-semibold text-slate-700">{idx + 1}. {link.title}</p>
+                            {embedUrl ? (
+                              <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
+                                <iframe src={embedUrl} className="w-full h-full" allowFullScreen title={link.title} />
+                              </div>
+                            ) : (
+                              <a href={link.url} target="_blank" rel="noreferrer" className="block p-4 bg-slate-50 border border-slate-200 rounded-lg text-blue-600 hover:underline">
+                                {link.url} (Opens in new tab)
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-10 text-center">
+                      <div className="mx-auto w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-4 text-slate-400">
+                         <Youtube size={32} />
+                      </div>
+                      <h4 className="text-lg font-bold text-slate-700">No Videos Available</h4>
+                      <p className="text-slate-500 mt-2">There are no video resources attached to this topic yet.</p>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between mt-10 pt-6 border-t border-slate-100">
+                    <button onClick={() => setCurrentStep('reading')} className="text-slate-400 hover:text-slate-600 font-semibold">
+                      ← Back to Reading
+                    </button>
+                    <button onClick={handleFinishWatching} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-200">
+                      Proceed to Quiz <ChevronRight size={20} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: QUIZ */}
+              {currentStep === 'quiz' && (
+                <div className="animate-in slide-in-from-right duration-500">
+                  {currentTopic.quiz && currentTopic.quiz.length > 0 ? (
+                    <QuizInterface 
+                      questions={currentTopic.quiz} 
+                      onPass={completeTopic} 
+                      onBack={() => setCurrentStep('watching')}
+                    />
+                  ) : (
+                    <div className="text-center py-10">
+                      <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-400">
+                         <HelpCircle size={32} />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-800">No Quiz Available</h3>
+                      <p className="text-slate-500 mb-8">You can mark this topic as complete immediately.</p>
+                      <button onClick={completeTopic} className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg">
+                        Mark Topic as Complete <CheckCircle className="inline ml-2" size={20}/>
+                      </button>
+                      <div className="mt-4">
+                        <button onClick={() => setCurrentStep('watching')} className="text-sm text-slate-400 hover:text-slate-600">Go Back</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+// --- SUB-COMPONENTS ---
+
+const StepIndicator = ({ step, current, label, icon: Icon }) => {
+  // Logic: Completed if current step is AFTER this step
+  const steps = ['reading', 'watching', 'quiz'];
+  const currentIndex = steps.indexOf(current);
+  const stepIndex = steps.indexOf(step);
+  const isCompleted = currentIndex > stepIndex;
+  const isActive = current === step;
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+        isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-300 scale-110' : 
+        isCompleted ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-400'
+      }`}>
+        {isCompleted ? <CheckCircle size={20} /> : <Icon size={20} />}
+      </div>
+      <span className={`text-sm font-bold hidden md:block ${isActive ? 'text-blue-800' : 'text-slate-500'}`}>{label}</span>
+    </div>
+  );
+};
+
+const QuizInterface = ({ questions, onPass, onBack }) => {
+  const [currentQIndex, setCurrentQIndex] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [showResult, setShowResult] = useState(false);
+  const [passed, setPassed] = useState(false);
+  const [score, setScore] = useState(0);
+
+  const handleSelect = (optIndex) => {
+    setAnswers({ ...answers, [currentQIndex]: optIndex });
+  };
+
+  const handleSubmit = () => {
+    let correctCount = 0;
+    questions.forEach((q, i) => {
+      if (answers[i] === q.correctAnswer) correctCount++;
+    });
+
+    const percentage = (correctCount / questions.length) * 100;
+    setScore(correctCount);
+    setShowResult(true);
+    setPassed(percentage >= 70);
+  };
+
+  if (showResult) {
+    return (
+      <div className="text-center py-10">
+        <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 ${passed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+          {passed ? <CheckCircle size={48} /> : <Lock size={48} />}
+        </div>
+        <h2 className="text-3xl font-bold mb-2">{passed ? "Quiz Passed!" : "Quiz Failed"}</h2>
+        <p className="text-slate-500 mb-8 text-lg">You scored {score} out of {questions.length} ({Math.round((score/questions.length)*100)}%)</p>
+        
+        {passed ? (
+          <button onClick={onPass} className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg">
+            Complete Topic & Continue →
+          </button>
+        ) : (
+          <button onClick={() => { setShowResult(false); setCurrentQIndex(0); setAnswers({}); }} className="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold">
+            Try Again
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const q = questions[currentQIndex];
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6 flex justify-between items-end">
+        <h3 className="text-xl font-bold text-slate-800">Question {currentQIndex + 1} of {questions.length}</h3>
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Single Choice</span>
+      </div>
+
+      <div className="mb-8">
+        <p className="text-lg text-slate-700 font-medium mb-6">{q.question}</p>
+        <div className="space-y-3">
+          {q.options.map((opt, i) => (
+            <div 
+              key={i} 
+              onClick={() => handleSelect(i)}
+              className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 flex items-center gap-3 ${
+                answers[currentQIndex] === i 
+                  ? 'border-blue-600 bg-blue-50 text-blue-800 shadow-md' 
+                  : 'border-slate-100 bg-white hover:border-slate-300 text-slate-600'
+              }`}
+            >
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${answers[currentQIndex] === i ? 'border-blue-600' : 'border-slate-300'}`}>
+                {answers[currentQIndex] === i && <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />}
+              </div>
+              <span className="font-medium">{opt}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* RIGHT CONTENT AREA */}
-      <div className="w-3/4 p-10 overflow-y-auto">
-        
-        {/* --- VIEW MODE: READING --- */}
-        {viewMode === 'reading' && (
-          <div className="max-w-3xl mx-auto animate-fadeIn">
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">{currentTopic.title}</h1>
-            
-            {/* 1. TEXT CONTENT (Formatted with ReactMarkdown) */}
-            {/* 'prose' class automatically styles h1, p, lists, bold, etc. */}
-            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 mb-8 prose prose-blue max-w-none">
-              <ReactMarkdown>
-                {currentTopic.content || "No text content available for this topic yet."}
-              </ReactMarkdown>
-            </div>
+      <div className="flex justify-between pt-6 border-t border-slate-100">
+        <button 
+          onClick={currentQIndex === 0 ? onBack : () => setCurrentQIndex(currentQIndex - 1)}
+          className="text-slate-400 hover:text-slate-600 font-bold"
+        >
+          Back
+        </button>
 
-            {/* 2. SUGGESTED LINKS */}
-            {currentTopic.suggestedLinks && currentTopic.suggestedLinks.length > 0 && (
-              <div className="mb-8">
-                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                  <ExternalLink size={20} /> Suggested Resources
-                </h3>
-                <ul className="space-y-2">
-                  {currentTopic.suggestedLinks.map((link, i) => (
-                    <li key={i} className="bg-blue-50 p-3 rounded-lg border border-blue-100 hover:bg-blue-100 transition">
-                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-medium flex items-center gap-2">
-                        {link.title} <span className="text-xs text-gray-400">↗</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* 3. MARK AS READ BUTTON */}
-            <div className="flex justify-end mt-10">
-              <button 
-                onClick={handleMarkAsRead}
-                className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-bold shadow-lg flex items-center gap-2 transition transform hover:scale-105"
-              >
-                Mark as Read & Take Quiz <ChevronRight size={20} />
-              </button>
-            </div>
-          </div>
+        {currentQIndex < questions.length - 1 ? (
+          <button 
+            onClick={() => setCurrentQIndex(currentQIndex + 1)}
+            disabled={answers[currentQIndex] === undefined}
+            className="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-900"
+          >
+            Next Question
+          </button>
+        ) : (
+          <button 
+            onClick={handleSubmit}
+            disabled={answers[currentQIndex] === undefined}
+            className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Submit Quiz
+          </button>
         )}
-
-        {/* --- VIEW MODE: EXAM (QUIZ) --- */}
-        {viewMode === 'exam' && (
-          <div className="max-w-2xl mx-auto">
-            <div className="mb-6 flex items-center gap-2 text-orange-600 font-bold text-xl">
-              <HelpCircle /> Quiz: {currentTopic.title}
-            </div>
-
-            {currentTopic.quizzes && currentTopic.quizzes.length > 0 ? (
-              <div className="space-y-6">
-                {currentTopic.quizzes.map((quiz, qIdx) => (
-                  <div key={qIdx} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <p className="font-semibold text-gray-800 mb-4">{qIdx + 1}. {quiz.question}</p>
-                    <div className="space-y-2">
-                      {quiz.options.map((option, oIdx) => (
-                        <div 
-                          key={oIdx} 
-                          onClick={() => !quizScore && handleQuizOptionSelect(qIdx, oIdx)}
-                          className={`p-3 rounded-md border cursor-pointer transition
-                            ${quizAnswers[qIdx] === oIdx ? 'bg-blue-100 border-blue-500' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}
-                            ${quizScore !== null && quiz.correctAnswer === oIdx ? '!bg-green-100 !border-green-500' : ''}
-                            ${quizScore !== null && quizAnswers[qIdx] === oIdx && quiz.correctAnswer !== oIdx ? '!bg-red-100 !border-red-500' : ''}
-                          `}
-                        >
-                          {option}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-
-                {!quizScore ? (
-                  <button 
-                    onClick={handleQuizSubmit}
-                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 mt-4"
-                  >
-                    Submit Answers
-                  </button>
-                ) : (
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
-                    <h3 className="text-xl font-bold text-green-800">Topic Completed!</h3>
-                    <p>Your Score: {quizScore} / {currentTopic.quizzes.length}</p>
-                    <button 
-                      onClick={() => setViewMode('reading')} 
-                      className="mt-2 text-blue-600 underline"
-                    >
-                      Review Material
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center text-gray-500 py-10">
-                No quiz available for this topic. You have completed it!
-              </div>
-            )}
-          </div>
-        )}
-
       </div>
     </div>
   );

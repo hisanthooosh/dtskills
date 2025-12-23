@@ -1,30 +1,33 @@
 const mongoose = require('mongoose');
 
-const courseSchema = new mongoose.Schema({
-  title: String,
-  description: String,
-  price: { type: Number, default: 200 },
-  chapters: [{
-    title: String, 
-    topics: [{     
-      title: String,
-      content: String, // This is your main text area
-      video: String,   // We keep this in DB just in case, but won't show it
-      
-      // --- NEW FIELD: Suggested Links ---
-      suggestedLinks: [{
-        title: String,
-        url: String
-      }],
-
-      // --- EXAM DATA ---
-      quizzes: [{  
-        question: String,
-        options: [String],
-        correctAnswer: Number // Index of the correct option (0, 1, 2, or 3)
-      }]
-    }]
-  }]
+const quizSchema = new mongoose.Schema({
+  question: String,
+  options: [String],
+  correctAnswer: Number,
 });
+
+const topicSchema = new mongoose.Schema({
+  title: String,
+  textContent: String, // Main learning material (Article/Text)
+  youtubeLinks: [{       // Suggested videos from Admin
+    title: String,
+    url: String
+  }],
+  quiz: [quizSchema], 
+});
+
+const moduleSchema = new mongoose.Schema({
+  title: String,
+  topics: [topicSchema],
+});
+
+const courseSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: String,
+  thumbnail: String,
+  price: Number,
+  modules: [moduleSchema],
+  college: { type: mongoose.Schema.Types.ObjectId, ref: 'College' }
+}, { timestamps: true });
 
 module.exports = mongoose.model('Course', courseSchema);
