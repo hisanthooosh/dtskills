@@ -24,8 +24,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// --- 3. PUBLISH COURSE (THE FIX IS HERE) ---
-// We map the incoming data (video, content) to the schema (youtubeLinks, textContent)
+// --- 3. PUBLISH COURSE ---
 router.post('/publish', async (req, res) => {
   const { title, description, price, modules, adminSecret } = req.body;
 
@@ -34,16 +33,12 @@ router.post('/publish', async (req, res) => {
   }
 
   try {
-    // DATA TRANSFORMATION LOGIC
     const formattedModules = modules.map(mod => ({
       title: mod.title,
       topics: mod.topics.map(topic => ({
         title: topic.title,
-        // Fix 1: Map 'content' -> 'textContent'
         textContent: topic.content || topic.textContent,
-        // Fix 2: Map single 'video' string -> 'youtubeLinks' Array
         youtubeLinks: topic.video ? [{ title: "Lesson Video", url: topic.video }] : [],
-        // Fix 3: Map 'quizzes' -> 'quiz'
         quiz: topic.quizzes || topic.quiz || []
       }))
     }));
@@ -52,7 +47,7 @@ router.post('/publish', async (req, res) => {
       title,
       description,
       price,
-      modules: formattedModules // Save the Fixed Data
+      modules: formattedModules
     });
 
     await newCourse.save();
@@ -63,40 +58,53 @@ router.post('/publish', async (req, res) => {
   }
 });
 
-// --- PASTE THIS IN server/routes/course.js ---
-
-// 1. Mark Topic as Complete
+// --- 4. MARK TOPIC AS COMPLETE (FIXED & SAFER) ---
 router.post('/complete-topic', async (req, res) => {
   const { userId, courseId, topicId } = req.body;
 
+  if (!userId || !courseId || !topicId) {
+    return res.status(400).json({ msg: "Missing Data" });
+  }
+
   try {
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ msg: "User not found" });
+    // 1. Try to find the user and specific enrollment
+    const user = await User.findOne({ _id: userId, "enrolledCourses.courseId": courseId });
 
-    // Check if user is already enrolled in this course
-    const enrollmentIndex = user.enrolledCourses.findIndex(
-      (c) => c.courseId.toString() === courseId
-    );
-
-    if (enrollmentIndex === -1) {
-      // If not enrolled, enroll them and add the topic
-      user.enrolledCourses.push({
-        courseId: courseId,
-        completedTopics: [topicId]
-      });
+    if (user) {
+      // SCENARIO A: User is already enrolled. Add topic to completedTopics.
+      // $addToSet ensures we don't add the same topicId twice
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: userId, "enrolledCourses.courseId": courseId },
+        { 
+          $addToSet: { 
+            "enrolledCourses.$.completedTopics": topicId 
+          } 
+        },
+        { new: true } // Return the updated document
+      );
+      return res.json({ msg: "Progress saved", progress: updatedUser.enrolledCourses });
     } else {
-      // If enrolled, check if topic is already completed
-      const enrollment = user.enrolledCourses[enrollmentIndex];
-      if (!enrollment.completedTopics.includes(topicId)) {
-        enrollment.completedTopics.push(topicId);
-      }
+      // SCENARIO B: User is NOT enrolled yet. Enroll them + Add topic.
+      const newUserUpdate = await User.findByIdAndUpdate(
+        userId,
+        {
+          $push: {
+            enrolledCourses: {
+              courseId: courseId,
+              completedTopics: [topicId],
+              enrolledAt: new Date()
+            }
+          }
+        },
+        { new: true }
+      );
+      return res.json({ msg: "Enrolled & Progress saved", progress: newUserUpdate.enrolledCourses });
     }
 
-    await user.save();
-    res.json({ msg: "Progress saved", progress: user.enrolledCourses });
   } catch (err) {
-    console.error(err);
+    console.error("Complete Topic Error:", err);
     res.status(500).send("Server Error");
   }
 });
+
 module.exports = router;

@@ -86,7 +86,7 @@ export default function MyLearning() {
                   
                   {/* FIX: Use backticks `` instead of single quotes '' */}
                   <Link 
-                    to={`/classroom/${course._id}`} 
+                    to={`/classroom/${course._id}`}
                     className="block w-full text-center bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2"
                   >
                     <PlayCircle size={18} /> Continue Learning
