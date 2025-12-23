@@ -16,12 +16,12 @@ import {
     ChevronDown,
     FileText, HelpCircle, Trash2, Edit3,
     ChevronRight,
-    Eye, X, School
+    Eye, X, School, Youtube, CheckCircle, Lock
 } from 'lucide-react';
 
 export default function AdminDashboard() {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('overview'); 
+    const [activeTab, setActiveTab] = useState('overview');
 
     const [courses, setCourses] = useState([]);
     const [students, setStudents] = useState([]);
@@ -35,11 +35,11 @@ export default function AdminDashboard() {
     const [courseData, setCourseData] = useState({ title: '', description: '', price: 200, modules: [] });
     const [newModuleTitle, setNewModuleTitle] = useState('');
     const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
-    
+
     // Current Topic State
     const [currentTopic, setCurrentTopic] = useState({
         title: '', video: '', content: '',
-        quizzes: [] 
+        quizzes: []
     });
 
     // Temp Quiz State
@@ -50,12 +50,14 @@ export default function AdminDashboard() {
     });
 
     // Preview Modal State
-    const [previewTopic, setPreviewTopic] = useState(null); 
+    const [previewTopic, setPreviewTopic] = useState(null);
+    const [previewStep, setPreviewStep] = useState('reading');
 
     const openPreview = (moduleIndex, topicIndex) => {
         // FIX: Access 'modules' instead of 'chapters'
         const topic = courseData.modules[moduleIndex].topics[topicIndex];
         setPreviewTopic(topic);
+        setPreviewStep('reading');
     };
 
     useEffect(() => {
@@ -115,14 +117,22 @@ export default function AdminDashboard() {
         });
     };
 
-    const publishCourse = async () => {
+   const publishCourse = async () => {
         try {
-            await axios.post('http://localhost:5000/api/admin/course', { ...courseData, adminSecret: ADMIN_SECRET });
-            alert("Course Published!");
+            // FIX: Point to the new route that handles data mapping
+            await axios.post('http://localhost:5000/api/courses/publish', { 
+                ...courseData, 
+                adminSecret: ADMIN_SECRET 
+            });
+            
+            alert("Course Published Successfully!");
             setCourseData({ title: '', description: '', price: 200, modules: [] });
             fetchData();
             setActiveTab('courses'); 
-        } catch (err) { alert("Error publishing: " + err.message); }
+        } catch (err) { 
+            console.error(err);
+            alert("Error publishing: " + (err.response?.data?.error || err.message)); 
+        }
     };
 
     const addQuizToTopic = () => {
@@ -733,76 +743,128 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/* --- STUDENT VIEW MODAL --- */}
+                {/* --- MODERN PREVIEW MODAL --- */}
                 {previewTopic && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                        <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                        <div className="bg-white w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in duration-200">
 
                             {/* Modal Header */}
-                            <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                    <Eye size={18} className="text-blue-400" />
-                                    <span className="font-bold">Student View Preview</span>
-                                </div>
-                                <button onClick={() => setPreviewTopic(null)} className="text-slate-400 hover:text-white">
+                            <div className="bg-slate-900 text-white p-4 flex justify-between items-center shadow-md z-10">
+                                <h3 className="font-bold text-lg flex items-center gap-2">
+                                    <Eye className="text-blue-400" /> Student Preview: {previewTopic.title}
+                                </h3>
+                                <button onClick={() => setPreviewTopic(null)} className="hover:bg-slate-700 p-2 rounded-full transition">
                                     <X size={24} />
                                 </button>
                             </div>
 
-                            {/* Modal Body (Scrollable) */}
-                            <div className="p-6 overflow-y-auto">
-                                <h2 className="text-2xl font-bold text-slate-900 mb-4">{previewTopic.title}</h2>
+                            {/* Modern Content Area */}
+                            <div className="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-10">
+                                <div className="max-w-3xl mx-auto">
 
-                                {/* 1. Video Preview */}
-                                {previewTopic.video ? (
-                                    <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg mb-6">
-                                        <iframe
-                                            className="w-full h-full"
-                                            src={`https://www.youtube.com/embed/${previewTopic.video.split('/').pop()}`}
-                                            title="Preview"
-                                        ></iframe>
-                                    </div>
-                                ) : (
-                                    <div className="bg-slate-100 p-4 rounded-lg mb-6 text-slate-500 text-sm italic text-center">
-                                        No Video Content
-                                    </div>
-                                )}
+                                    {/* Progress Stepper */}
+                                    <div className="mb-8 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                                        <StepIndicator step="reading" current={previewStep} label="Read Notes" icon={FileText} />
+                                        <div className={`h-1 flex-1 mx-4 rounded-full ${['watching', 'quiz'].includes(previewStep) ? 'bg-blue-600' : 'bg-slate-100'}`} />
 
-                                {/* 2. Notes Preview (Markdown Enabled) */}
-                                <div className="mb-8 bg-slate-50 p-6 rounded-xl border border-slate-100">
-                                    <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">Lecture Notes</h3>
-                                    <div className="prose text-sm max-w-none">
-                                        <ReactMarkdown>{previewTopic.content || "No text content added."}</ReactMarkdown>
-                                    </div>
-                                </div>
+                                        <StepIndicator step="watching" current={previewStep} label="Watch Video" icon={Youtube} />
+                                        <div className={`h-1 flex-1 mx-4 rounded-full ${['quiz'].includes(previewStep) ? 'bg-blue-600' : 'bg-slate-100'}`} />
 
-                                {/* 3. Quiz Preview */}
-                                {previewTopic.quizzes && previewTopic.quizzes.length > 0 && (
-                                    <div className="border border-blue-100 rounded-xl p-4 bg-white shadow-sm">
-                                        <h3 className="font-bold text-blue-800 mb-3">Quiz Preview ({previewTopic.quizzes.length} Questions)</h3>
-                                        <div className="space-y-4">
-                                            {previewTopic.quizzes.map((q, idx) => (
-                                                <div key={idx} className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-sm">
-                                                    <p className="font-bold text-slate-800 mb-2">Q{idx + 1}: {q.question}</p>
-                                                    <ul className="grid grid-cols-2 gap-2">
-                                                        {q.options.map((opt, i) => (
-                                                            <li key={i} className={`p-2 border rounded ${i === q.correctAnswer ? 'bg-green-100 border-green-400 text-green-800 font-bold' : 'bg-white text-slate-500'}`}>
-                                                                {opt}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
+                                        <StepIndicator step="quiz" current={previewStep} label="Take Quiz" icon={HelpCircle} />
+                                    </div>
+
+                                    <div className="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden min-h-[400px]">
+                                        <div className="p-8 md:p-12">
+
+                                            {/* STEP 1: READING */}
+                                            {previewStep === 'reading' && (
+                                                <div className="animate-in fade-in duration-300">
+                                                    <h2 className="text-2xl font-bold text-slate-800 mb-6">{previewTopic.title}</h2>
+
+                                                    <div className="prose lg:prose-lg text-slate-600 max-w-none mb-10 leading-relaxed">
+                                                        <ReactMarkdown>{previewTopic.content || "_No text content added yet._"}</ReactMarkdown>
+                                                    </div>
+
+                                                    <div className="flex justify-end pt-6 border-t border-slate-100">
+                                                        <button
+                                                            onClick={() => setPreviewStep('watching')}
+                                                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-200"
+                                                        >
+                                                            I've Read This <ChevronRight size={20} />
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            ))}
+                                            )}
+
+                                            {/* STEP 2: WATCHING */}
+                                            {previewStep === 'watching' && (
+                                                <div className="animate-in slide-in-from-right duration-300">
+                                                    <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                                                        <Youtube className="text-red-600" /> Video Lesson
+                                                    </h3>
+
+                                                    {previewTopic.video ? (
+                                                        <div className="space-y-4">
+                                                            <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
+                                                                <iframe
+                                                                    src={getEmbedUrl(previewTopic.video)}
+                                                                    className="w-full h-full"
+                                                                    title={previewTopic.title}
+                                                                    allowFullScreen
+                                                                />
+                                                            </div>
+                                                            <p className="text-xs text-slate-400 text-center">Previewing: {previewTopic.video}</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="bg-slate-50 p-10 text-center rounded-xl border border-dashed border-slate-300">
+                                                            <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+                                                                <Youtube size={32} />
+                                                            </div>
+                                                            <h4 className="text-lg font-bold text-slate-700">No Video Added</h4>
+                                                            <p className="text-slate-500 mt-2">Add a YouTube link in the topic editor to see it here.</p>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="flex justify-between mt-10 pt-6 border-t border-slate-100">
+                                                        <button onClick={() => setPreviewStep('reading')} className="text-slate-400 hover:text-slate-600 font-bold transition">
+                                                            ← Back
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setPreviewStep('quiz')}
+                                                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-200"
+                                                        >
+                                                            Proceed to Quiz <ChevronRight size={20} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* STEP 3: QUIZ */}
+                                            {previewStep === 'quiz' && (
+                                                <div className="animate-in slide-in-from-right duration-300">
+                                                    {previewTopic.quizzes && previewTopic.quizzes.length > 0 ? (
+                                                        <PreviewQuizInterface
+                                                            questions={previewTopic.quizzes}
+                                                            onBack={() => setPreviewStep('watching')}
+                                                        />
+                                                    ) : (
+                                                        <div className="text-center py-10">
+                                                            <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                                <Lock size={32} />
+                                                            </div>
+                                                            <h3 className="text-xl font-bold text-slate-800">No Quiz Available</h3>
+                                                            <p className="text-slate-500 mt-2 mb-6">You haven't added any questions to this topic yet.</p>
+                                                            <button onClick={() => setPreviewStep('watching')} className="text-slate-400 font-bold hover:text-slate-600">
+                                                                Go Back
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
                                         </div>
                                     </div>
-                                )}
-                            </div>
-
-                            {/* Modal Footer */}
-                            <div className="p-4 border-t bg-slate-50 flex justify-end">
-                                <button onClick={() => setPreviewTopic(null)} className="px-6 py-2 bg-slate-800 text-white rounded-lg font-bold">
-                                    Close Preview
-                                </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -811,3 +873,111 @@ export default function AdminDashboard() {
         </div>
     );
 }
+
+// --- HELPER COMPONENTS & FUNCTIONS FOR PREVIEW ---
+
+const getEmbedUrl = (url) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+};
+
+const StepIndicator = ({ step, current, label, icon: Icon }) => {
+    const steps = ['reading', 'watching', 'quiz'];
+    const currentIndex = steps.indexOf(current);
+    const stepIndex = steps.indexOf(step);
+    const isCompleted = currentIndex > stepIndex;
+    const isActive = current === step;
+  
+    return (
+      <div className="flex items-center gap-2">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+          isActive ? 'bg-blue-600 text-white shadow-lg scale-110' : 
+          isCompleted ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-400'
+        }`}>
+          {isCompleted ? <CheckCircle size={16} /> : <Icon size={16} />}
+        </div>
+        <span className={`text-xs font-bold hidden sm:block ${isActive ? 'text-blue-800' : 'text-slate-500'}`}>{label}</span>
+      </div>
+    );
+};
+
+const PreviewQuizInterface = ({ questions, onBack }) => {
+    const [currentQIndex, setCurrentQIndex] = useState(0);
+    const [answers, setAnswers] = useState({});
+    const [showResult, setShowResult] = useState(false);
+    const [score, setScore] = useState(0);
+  
+    const handleSelect = (optIndex) => {
+        setAnswers({ ...answers, [currentQIndex]: optIndex });
+    };
+  
+    const handleSubmit = () => {
+        let correctCount = 0;
+        questions.forEach((q, i) => {
+            if (answers[i] === q.correctAnswer) correctCount++;
+        });
+        setScore(correctCount);
+        setShowResult(true);
+    };
+  
+    if (showResult) {
+        return (
+            <div className="text-center py-10">
+                <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle size={40} />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">Quiz Completed</h2>
+                <p className="text-slate-500 mb-6">Score: {score} / {questions.length}</p>
+                <button 
+                    onClick={() => { setShowResult(false); setCurrentQIndex(0); setAnswers({}); }} 
+                    className="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold"
+                >
+                    Restart Preview
+                </button>
+            </div>
+        );
+    }
+  
+    const q = questions[currentQIndex];
+  
+    return (
+        <div>
+            <div className="mb-4 flex justify-between items-end">
+                <h3 className="text-lg font-bold text-slate-800">Question {currentQIndex + 1} of {questions.length}</h3>
+            </div>
+    
+            <div className="mb-6">
+                <p className="text-md text-slate-700 font-medium mb-4">{q.question}</p>
+                <div className="space-y-2">
+                    {q.options.map((opt, i) => (
+                        <div 
+                            key={i} 
+                            onClick={() => handleSelect(i)}
+                            className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 flex items-center gap-3 ${
+                                answers[currentQIndex] === i 
+                                    ? 'border-blue-600 bg-blue-50 text-blue-800' 
+                                    : 'border-slate-100 bg-white hover:border-slate-300'
+                            }`}
+                        >
+                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${answers[currentQIndex] === i ? 'border-blue-600' : 'border-slate-300'}`}>
+                                {answers[currentQIndex] === i && <div className="w-2 h-2 rounded-full bg-blue-600" />}
+                            </div>
+                            <span className="text-sm font-medium">{opt}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+    
+            <div className="flex justify-between pt-4 border-t border-slate-100">
+                <button onClick={currentQIndex === 0 ? onBack : () => setCurrentQIndex(currentQIndex - 1)} className="text-slate-400 font-bold hover:text-slate-600">Back</button>
+                {currentQIndex < questions.length - 1 ? (
+                    <button onClick={() => setCurrentQIndex(currentQIndex + 1)} disabled={answers[currentQIndex] === undefined} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50">Next</button>
+                ) : (
+                    <button onClick={handleSubmit} disabled={answers[currentQIndex] === undefined} className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-bold shadow-lg disabled:opacity-50">Finish Quiz</button>
+                )}
+            </div>
+        </div>
+    );
+};

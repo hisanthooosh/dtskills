@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown'; // Ensure you install: npm install react-markdown
 import { 
   BookOpen, 
   Youtube, 
@@ -10,7 +11,8 @@ import {
   ArrowLeft,
   Lock,
   PlayCircle,
-  FileText
+  FileText,
+  AlertCircle
 } from 'lucide-react';
 
 const Classroom = () => {
@@ -42,21 +44,49 @@ const Classroom = () => {
     try {
       const res = await axios.get(`http://localhost:5000/api/courses/${id}`);
       setCourse(res.data);
+      
+      // Attempt to load saved progress (optional - depends if your backend sends it)
+      if (res.data.progress) {
+         setCompletedTopics(res.data.progress);
+      }
     } catch (err) {
-      console.error("Error:", err);
+      console.error("Error loading course:", err);
     }
   };
 
   if (!course) return <div className="min-h-screen flex items-center justify-center text-slate-500 font-medium">Loading Class...</div>;
-  if (!course.modules?.length) return <div className="p-10 text-center text-red-500">Course content is empty.</div>;
+  if (!course.modules || course.modules.length === 0) return <div className="p-10 text-center text-red-500">Course content is empty.</div>;
 
   const currentModule = course.modules[activeModuleIndex];
   const currentTopic = currentModule?.topics[activeTopicIndex];
 
-  // --- HELPERS ---
+  // --- 🛠️ DATA NORMALIZATION HELPER (Fixes your blank content issue) ---
+  const getTopicData = (topic) => {
+    if (!topic) return {};
+    
+    // Handle Video: Support both 'youtubeLinks' array AND old 'video' string
+    let videos = [];
+    if (topic.youtubeLinks && topic.youtubeLinks.length > 0) {
+        videos = topic.youtubeLinks;
+    } else if (topic.video) {
+        videos = [{ title: "Video Lesson", url: topic.video }];
+    }
 
+    // Handle Quiz: Support 'quiz' AND 'quizzes'
+    const quizzes = topic.quiz && topic.quiz.length > 0 ? topic.quiz : (topic.quizzes || []);
+
+    // Handle Text: Support 'textContent' AND 'content'
+    const text = topic.textContent || topic.content || "";
+
+    return { ...topic, videos, quizzes, text };
+  };
+
+  const activeData = getTopicData(currentTopic);
+
+  // --- URL PARSER ---
   const getEmbedUrl = (url) => {
     if (!url) return null;
+    // Handle standard Youtube and Shorts links
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
@@ -65,47 +95,45 @@ const Classroom = () => {
   const handleTopicClick = (mIdx, tIdx) => {
     setActiveModuleIndex(mIdx);
     setActiveTopicIndex(tIdx);
-    setCurrentStep('reading'); // Reset flow when switching topics manually
+    setCurrentStep('reading'); 
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // --- FLOW HANDLERS (UPDATED: NO SKIPPING) ---
+  // --- FLOW HANDLERS ---
 
-  // 1. Finish Reading -> Always go to Watching
   const handleFinishReading = () => {
     setCurrentStep('watching');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 2. Finish Watching -> Always go to Quiz
   const handleFinishWatching = () => {
     setCurrentStep('quiz');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 3. Mark Complete API Call & Navigation
   const completeTopic = async () => {
     try {
-      // 1. Optimistic UI Update
+      // Optimistic UI
       if (!completedTopics.includes(currentTopic._id)) {
         setCompletedTopics([...completedTopics, currentTopic._id]);
       }
 
-      // 2. Backend Call
       await axios.post('http://localhost:5000/api/courses/complete-topic', {
         userId,
         courseId: id,
         topicId: currentTopic._id
       });
 
-      // 3. Move to next
       goToNextTopic();
     } catch (err) {
-      alert("Error saving progress. Please check internet.");
+      console.error(err);
+      alert("Note: Progress saved locally but failed on server.");
+      goToNextTopic(); // Allow continuing even if server fails
     }
   };
 
   const goToNextTopic = () => {
-    setCurrentStep('reading'); // Reset flow for next topic
+    setCurrentStep('reading'); 
 
     if (activeTopicIndex < currentModule.topics.length - 1) {
       setActiveTopicIndex(activeTopicIndex + 1);
@@ -113,7 +141,7 @@ const Classroom = () => {
       setActiveModuleIndex(activeModuleIndex + 1);
       setActiveTopicIndex(0);
     } else {
-      alert("🎉 Course Completed! You are amazing!");
+      alert("🎉 Course Completed! Congratulations!");
       navigate('/dashboard/profile'); 
     }
   };
@@ -122,7 +150,7 @@ const Classroom = () => {
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
       
       {/* --- SIDEBAR --- */}
-      <aside className="w-80 bg-white border-r border-slate-200 flex flex-col h-full z-20 shadow-lg">
+      <aside className="w-80 bg-white border-r border-slate-200 flex flex-col h-full z-20 shadow-lg hidden md:flex">
         <div className="p-5 border-b border-slate-100">
           <button onClick={() => navigate('/dashboard/my-learning')} className="flex items-center text-slate-500 hover:text-blue-600 text-sm font-medium mb-3 transition">
             <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
@@ -140,6 +168,8 @@ const Classroom = () => {
                 {mod.topics.map((topic, tIdx) => {
                   const isActive = activeModuleIndex === mIdx && activeTopicIndex === tIdx;
                   const isCompleted = completedTopics.includes(topic._id);
+                  // Normalize data just for sidebar icons
+                  const tData = getTopicData(topic); 
 
                   return (
                     <button
@@ -154,8 +184,15 @@ const Classroom = () => {
                       <div className={`mt-0.5 ${isCompleted ? 'text-green-500' : (isActive ? 'text-blue-600' : 'text-slate-400')}`}>
                         {isCompleted ? <CheckCircle size={18} /> : (isActive ? <div className="w-4 h-4 rounded-full border-4 border-blue-600" /> : <div className="w-4 h-4 rounded-full border-2 border-slate-300" />)}
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className={`text-sm font-medium ${isActive ? 'text-blue-700' : 'text-slate-700'}`}>{topic.title}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 flex gap-2">
+                           <span className="flex items-center gap-1">
+                             {tData.videos.length > 0 ? <Youtube size={10}/> : <FileText size={10}/>}
+                             {tData.videos.length > 0 ? 'Video' : 'Reading'}
+                           </span>
+                           {tData.quizzes.length > 0 && <span className="flex items-center gap-1"><HelpCircle size={10}/> Quiz</span>}
+                        </p>
                       </div>
                     </button>
                   );
@@ -167,16 +204,16 @@ const Classroom = () => {
       </aside>
 
       {/* --- MAIN CONTENT --- */}
-      <main className="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-10 relative">
+      <main className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-10 relative">
         <div className="max-w-4xl mx-auto pb-20">
           
           {/* Progress Stepper */}
-          <div className="mb-8 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+          <div className="mb-8 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
              <StepIndicator step="reading" current={currentStep} label="Read Notes" icon={FileText} />
-             <div className={`h-1 flex-1 mx-4 rounded-full ${['watching', 'quiz'].includes(currentStep) ? 'bg-blue-600' : 'bg-slate-100'}`} />
+             <div className={`h-1 flex-1 min-w-[20px] mx-4 rounded-full ${['watching', 'quiz'].includes(currentStep) ? 'bg-blue-600' : 'bg-slate-100'}`} />
              
              <StepIndicator step="watching" current={currentStep} label="Watch Video" icon={Youtube} />
-             <div className={`h-1 flex-1 mx-4 rounded-full ${['quiz'].includes(currentStep) ? 'bg-blue-600' : 'bg-slate-100'}`} />
+             <div className={`h-1 flex-1 min-w-[20px] mx-4 rounded-full ${['quiz'].includes(currentStep) ? 'bg-blue-600' : 'bg-slate-100'}`} />
              
              <StepIndicator step="quiz" current={currentStep} label="Take Quiz" icon={HelpCircle} />
           </div>
@@ -184,25 +221,31 @@ const Classroom = () => {
           <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden min-h-[500px]">
             
             {/* Header */}
-            <div className="bg-slate-900 text-white p-8">
-              <h1 className="text-3xl font-bold">{currentTopic.title}</h1>
+            <div className="bg-slate-900 text-white p-6 md:p-8">
+              <h1 className="text-2xl md:text-3xl font-bold">{currentTopic.title}</h1>
             </div>
 
-            <div className="p-8 md:p-12">
+            <div className="p-6 md:p-12">
               
               {/* STEP 1: READING */}
               {currentStep === 'reading' && (
                 <div className="animate-in fade-in duration-500">
                   <div className="prose lg:prose-lg text-slate-600 max-w-none mb-10 leading-relaxed">
-                    {currentTopic.textContent ? (
-                      <p className="whitespace-pre-line">{currentTopic.textContent}</p>
+                    {activeData.text ? (
+                      <ReactMarkdown>{activeData.text}</ReactMarkdown>
                     ) : (
-                      <p className="italic text-slate-400 bg-slate-100 p-4 rounded-lg">No written content available for this topic.</p>
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 flex gap-4">
+                         <AlertCircle className="text-blue-500 shrink-0" />
+                         <div>
+                            <p className="font-bold text-blue-700">No written notes</p>
+                            <p className="text-blue-600 text-sm">This topic doesn't have any text content. You can proceed to the video.</p>
+                         </div>
+                      </div>
                     )}
                   </div>
                   <div className="flex justify-end pt-6 border-t border-slate-100">
                     <button onClick={handleFinishReading} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-200">
-                      I've Read This <ChevronRight size={20} />
+                      Proceed to Video <ChevronRight size={20} />
                     </button>
                   </div>
                 </div>
@@ -212,16 +255,16 @@ const Classroom = () => {
               {currentStep === 'watching' && (
                 <div className="animate-in slide-in-from-right duration-500">
                   <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                    <Youtube className="text-red-600" /> Recommended Videos
+                    <Youtube className="text-red-600" /> Video Lesson
                   </h3>
                   
-                  {currentTopic.youtubeLinks && currentTopic.youtubeLinks.length > 0 ? (
+                  {activeData.videos.length > 0 ? (
                     <div className="space-y-8">
-                      {currentTopic.youtubeLinks.map((link, idx) => {
+                      {activeData.videos.map((link, idx) => {
                         const embedUrl = getEmbedUrl(link.url);
                         return (
                           <div key={idx} className="space-y-2">
-                            <p className="font-semibold text-slate-700">{idx + 1}. {link.title}</p>
+                            <p className="font-semibold text-slate-700">{idx + 1}. {link.title || "Lesson Video"}</p>
                             {embedUrl ? (
                               <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
                                 <iframe src={embedUrl} className="w-full h-full" allowFullScreen title={link.title} />
@@ -240,8 +283,8 @@ const Classroom = () => {
                       <div className="mx-auto w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-4 text-slate-400">
                          <Youtube size={32} />
                       </div>
-                      <h4 className="text-lg font-bold text-slate-700">No Videos Available</h4>
-                      <p className="text-slate-500 mt-2">There are no video resources attached to this topic yet.</p>
+                      <h4 className="text-lg font-bold text-slate-700">No Video Available</h4>
+                      <p className="text-slate-500 mt-2">There is no video attached to this topic.</p>
                     </div>
                   )}
 
@@ -259,9 +302,9 @@ const Classroom = () => {
               {/* STEP 3: QUIZ */}
               {currentStep === 'quiz' && (
                 <div className="animate-in slide-in-from-right duration-500">
-                  {currentTopic.quiz && currentTopic.quiz.length > 0 ? (
+                  {activeData.quizzes.length > 0 ? (
                     <QuizInterface 
-                      questions={currentTopic.quiz} 
+                      questions={activeData.quizzes} 
                       onPass={completeTopic} 
                       onBack={() => setCurrentStep('watching')}
                     />
@@ -293,7 +336,6 @@ const Classroom = () => {
 // --- SUB-COMPONENTS ---
 
 const StepIndicator = ({ step, current, label, icon: Icon }) => {
-  // Logic: Completed if current step is AFTER this step
   const steps = ['reading', 'watching', 'quiz'];
   const currentIndex = steps.indexOf(current);
   const stepIndex = steps.indexOf(step);
@@ -301,14 +343,14 @@ const StepIndicator = ({ step, current, label, icon: Icon }) => {
   const isActive = current === step;
 
   return (
-    <div className="flex items-center gap-2">
-      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+    <div className="flex items-center gap-2 shrink-0">
+      <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
         isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-300 scale-110' : 
         isCompleted ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-400'
       }`}>
-        {isCompleted ? <CheckCircle size={20} /> : <Icon size={20} />}
+        {isCompleted ? <CheckCircle size={18} /> : <Icon size={18} />}
       </div>
-      <span className={`text-sm font-bold hidden md:block ${isActive ? 'text-blue-800' : 'text-slate-500'}`}>{label}</span>
+      <span className={`text-xs md:text-sm font-bold hidden sm:block ${isActive ? 'text-blue-800' : 'text-slate-500'}`}>{label}</span>
     </div>
   );
 };
