@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #f8fafc;
+}
+
+/* MARKDOWN STYLES (For Notes) */
+.prose h1 { @apply text-3xl font-bold text-slate-900 mb-4 mt-6; }
+.prose h2 { @apply text-2xl font-bold text-slate-800 mb-3 mt-5; }
+.prose h3 { @apply text-xl font-bold text-slate-800 mb-2 mt-4; }
+.prose p { @apply text-slate-600 leading-relaxed mb-4; }
+.prose ul { @apply list-disc list-inside mb-4 space-y-1 ml-4; }
+.prose ol { @apply list-decimal list-inside mb-4 space-y-1 ml-4; }
+.prose li { @apply text-slate-600; }
+.prose strong { @apply text-slate-900 font-bold; }
+.prose code { @apply bg-slate-100 text-red-500 px-1 py-0.5 rounded text-sm font-mono; }
+.prose pre { @apply bg-slate-900 text-slate-50 p-4 rounded-lg overflow-x-auto mb-4; }
+.prose pre code { @apply bg-transparent text-slate-50 p-0; }

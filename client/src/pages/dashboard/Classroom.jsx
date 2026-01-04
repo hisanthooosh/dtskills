@@ -1,0 +1,436 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+import {
+  BookOpen, Youtube, HelpCircle, CheckCircle,
+  ChevronRight, ArrowLeft, Lock, PlayCircle,
+  FileText, AlertCircle
+} from 'lucide-react';
+
+const Classroom = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [course, setCourse] = useState(null);
+
+  // Navigation State
+  const [activeModuleIndex, setActiveModuleIndex] = useState(0);
+  const [activeTopicIndex, setActiveTopicIndex] = useState(0);
+
+  // FLOW STATE: 'reading' -> 'watching' -> 'quiz'
+  const [currentStep, setCurrentStep] = useState('reading');
+  const [completedTopics, setCompletedTopics] = useState([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+  // Auth State
+  const studentLocal = JSON.parse(localStorage.getItem('student'));
+  const userId = studentLocal ? studentLocal._id : null;
+
+  useEffect(() => {
+    if (!userId) {
+      navigate('/login');
+      return;
+    }
+    fetchClassroomData();
+  }, [id, userId]);
+
+  const fetchClassroomData = async () => {
+    try {
+      // 1. Parallel fetch for speed
+      const [courseRes, studentRes] = await Promise.all([
+        axios.get(`http://localhost:5000/api/courses/${id}`),
+        axios.get(`http://localhost:5000/api/student/${userId}`)
+      ]);
+
+      const courseData = courseRes.data;
+      const studentData = studentRes.data;
+      setCourse(courseData);
+
+      // 2. Extract Progress (Safer)
+      const enrollment = studentData.enrolledCourses?.find(
+        (c) => c.courseId && (c.courseId._id == id || c.courseId == id)
+      );
+
+      // FIX: Default to empty array to prevent "undefined" errors
+      const progressIds = enrollment?.completedTopics || [];
+      // --- THE MISSING FIX: Sync fetched progress to local state ---
+      setCompletedTopics(progressIds);
+
+      // 3. RESUME LOGIC: Find first uncompleted topic
+      if (courseData.modules && courseData.modules.length > 0) {
+        // Only auto-jump if at start
+        if (activeModuleIndex === 0 && activeTopicIndex === 0) {
+          let foundResumePoint = false;
+          for (let m = 0; m < courseData.modules.length; m++) {
+            const module = courseData.modules[m];
+            if (!module.topics) continue;
+
+            for (let t = 0; t < module.topics.length; t++) {
+              const topic = module.topics[t];
+              // Robust check: Compare IDs as strings
+
+              const isFinished = progressIds.some(pid => pid && topic._id && pid.toString() === topic._id.toString());
+
+              if (!isFinished) {
+                setActiveModuleIndex(m);
+                setActiveTopicIndex(t);
+                foundResumePoint = true;
+                break;
+              }
+            }
+            if (foundResumePoint) break;
+          }
+        }
+      }
+      setIsDataLoaded(true);
+    } catch (err) {
+      console.error("Error loading classroom:", err);
+      setIsDataLoaded(true);
+    }
+  };
+
+  // --- CRITICAL FIX: Loading State to prevent White Screen ---
+  if (!course || !isDataLoaded) return <div className="min-h-screen flex items-center justify-center text-slate-500 font-medium">Resuming your class...</div>;
+  if (!course.modules || course.modules.length === 0) return <div className="p-10 text-center text-red-500">Course content is empty.</div>;
+
+  const currentModule = course.modules[activeModuleIndex];
+  // --- CRITICAL FIX: Optional Chaining to prevent crash if index is bad ---
+  const currentTopic = currentModule?.topics ? currentModule.topics[activeTopicIndex] : null;
+
+  // If topic is somehow invalid, show a fallback instead of crashing
+  if (!currentTopic) return <div className="p-10">Topic not found. Please select from sidebar.</div>;
+
+  // --- HELPER TO HANDLE DATA ---
+  const getTopicData = (topic) => {
+    if (!topic) return {};
+
+    let videos = [];
+    if (topic.youtubeLinks && topic.youtubeLinks.length > 0) {
+      videos = topic.youtubeLinks;
+    } else if (topic.video) {
+      videos = [{ title: "Video Lesson", url: topic.video }];
+    }
+    const quizzes = topic.quiz && topic.quiz.length > 0 ? topic.quiz : (topic.quizzes || []);
+    const text = topic.textContent || topic.content || "";
+
+    return { ...topic, videos, quizzes, text };
+  };
+
+  const activeData = getTopicData(currentTopic);
+
+  const getEmbedUrl = (url) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+  };
+
+  const handleTopicClick = (mIdx, tIdx) => {
+    setActiveModuleIndex(mIdx);
+    setActiveTopicIndex(tIdx);
+    setCurrentStep('reading');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  
+
+  
+
+  const completeTopic = async () => {
+    try {
+      // Optimistic UI Update
+      if (currentTopic && !completedTopics.includes(currentTopic._id)) {
+        setCompletedTopics([...completedTopics, currentTopic._id]);
+      }
+
+      await axios.post('http://localhost:5000/api/courses/complete-topic', {
+        userId,
+        courseId: id,
+        topicId: currentTopic._id
+      });
+
+      goToNextTopic();
+    } catch (err) {
+      console.error(err);
+      alert("Note: Progress saved locally but failed on server.");
+      goToNextTopic();
+    }
+  };
+
+  const goToNextTopic = () => {
+    setCurrentStep('reading');
+
+    if (activeTopicIndex < currentModule.topics.length - 1) {
+      setActiveTopicIndex(activeTopicIndex + 1);
+    } else if (activeModuleIndex < course.modules.length - 1) {
+      setActiveModuleIndex(activeModuleIndex + 1);
+      setActiveTopicIndex(0);
+    } else {
+      alert("🎉 Course Completed! Congratulations!");
+      navigate('/dashboard/profile');
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
+
+      {/* --- SIDEBAR --- */}
+      <aside className="w-80 bg-white border-r border-slate-200 flex flex-col h-full z-20 shadow-lg hidden md:flex">
+        <div className="p-5 border-b border-slate-100">
+          <button onClick={() => navigate('/dashboard/my-learning')} className="flex items-center text-slate-500 hover:text-blue-600 text-sm font-medium mb-3 transition">
+            <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
+          </button>
+          <h2 className="font-bold text-lg text-slate-800 leading-tight">{course.title}</h2>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {course.modules.map((mod, mIdx) => (
+            <div key={mIdx} className="border-b border-slate-50">
+              <div className="bg-slate-50/50 px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider sticky top-0 backdrop-blur-sm">
+                {mod.title}
+              </div>
+              <div>
+                {mod.topics.map((topic, tIdx) => {
+                  const isActive = activeModuleIndex === mIdx && activeTopicIndex === tIdx;
+                  const isCompleted = completedTopics.includes(topic._id);
+                  const tData = getTopicData(topic);
+
+                  return (
+                    <button
+                      key={tIdx}
+                      onClick={() => handleTopicClick(mIdx, tIdx)}
+                      className={`w-full text-left px-5 py-4 flex items-start gap-3 transition-all duration-200 border-l-4 ${isActive
+                        ? 'bg-blue-50 border-blue-600'
+                        : 'border-transparent hover:bg-slate-50'
+                        }`}
+                    >
+                      <div className={`mt-0.5 ${isCompleted ? 'text-green-500' : (isActive ? 'text-blue-600' : 'text-slate-400')}`}>
+                        {isCompleted ? <CheckCircle size={18} /> : (isActive ? <div className="w-4 h-4 rounded-full border-4 border-blue-600" /> : <div className="w-4 h-4 rounded-full border-2 border-slate-300" />)}
+                      </div>
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium ${isActive ? 'text-blue-700' : 'text-slate-700'}`}>{topic.title}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 flex gap-2">
+                          <span className="flex items-center gap-1">
+                            {tData.videos.length > 0 ? <Youtube size={10} /> : <FileText size={10} />}
+                            {tData.videos.length > 0 ? 'Video' : 'Reading'}
+                          </span>
+                          {tData.quizzes.length > 0 && <span className="flex items-center gap-1"><HelpCircle size={10} /> Quiz</span>}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      {/* --- MAIN CONTENT --- */}
+      <main className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-10 relative">
+        <div className="max-w-4xl mx-auto pb-20">
+
+          {/* Progress Stepper */}
+          <div className="mb-8 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
+            <StepIndicator step="reading" current={currentStep} label="Read Notes" icon={FileText} />
+            <div className={`h-1 flex-1 min-w-[20px] mx-4 rounded-full ${currentStep === 'quiz' ? 'bg-blue-600' : 'bg-slate-100'}`} />
+            <StepIndicator step="quiz" current={currentStep} label="Take Quiz" icon={HelpCircle} />
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden min-h-[500px]">
+
+            {/* Header */}
+            <div className="bg-slate-900 text-white p-6 md:p-8">
+              {/* Added safe check ?.title to prevent crash */}
+              <h1 className="text-2xl md:text-3xl font-bold">{currentTopic?.title || "Loading Topic..."}</h1>
+            </div>
+
+            <div className="p-6 md:p-12">
+
+              {/* STEP 1: READING */}
+              {currentStep === 'reading' && (
+                <div className="animate-in fade-in duration-500">
+                  <div className="prose lg:prose-lg text-slate-600 max-w-none mb-10 leading-relaxed">
+                    {activeData.text ? (
+                      <ReactMarkdown>{activeData.text}</ReactMarkdown>
+                    ) : (
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 flex gap-4">
+                        <AlertCircle className="text-blue-500 shrink-0" />
+                        <div>
+                          <p className="font-bold text-blue-700">No written notes</p>
+                          <p className="text-blue-600 text-sm">This topic doesn't have any text content. You can proceed to the video.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-end pt-6 border-t border-slate-100">
+                    <button onClick={() => setCurrentStep('quiz')} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-200">
+                      Take Quiz <ChevronRight size={20} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+
+
+              {/* STEP 3: QUIZ */}
+              {currentStep === 'quiz' && (
+                <div className="animate-in slide-in-from-right duration-500">
+                  {activeData.quizzes.length > 0 ? (
+                    <QuizInterface
+                      questions={activeData.quizzes}
+                      onPass={completeTopic}
+                      onBack={() => setCurrentStep('reading')}
+                    />
+                  ) : (
+                    <div className="text-center py-10">
+                      <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-400">
+                        <HelpCircle size={32} />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-800">No Quiz Available</h3>
+                      <p className="text-slate-500 mb-8">You can mark this topic as complete immediately.</p>
+                      <button onClick={completeTopic} className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg">
+                        Mark Topic as Complete <CheckCircle className="inline ml-2" size={20} />
+                      </button>
+                      <div className="mt-4">
+                        <button onClick={() => setCurrentStep('watching')} className="text-sm text-slate-400 hover:text-slate-600">Go Back</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+// --- SUB-COMPONENTS ---
+
+const StepIndicator = ({ step, current, label, icon: Icon }) => {
+  const steps = ['reading', 'watching', 'quiz'];
+  const currentIndex = steps.indexOf(current);
+  const stepIndex = steps.indexOf(step);
+  const isCompleted = currentIndex > stepIndex;
+  const isActive = current === step;
+
+  return (
+    <div className="flex items-center gap-2 shrink-0">
+      <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all duration-300 ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-300 scale-110' :
+        isCompleted ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-400'
+        }`}>
+        {isCompleted ? <CheckCircle size={18} /> : <Icon size={18} />}
+      </div>
+      <span className={`text-xs md:text-sm font-bold hidden sm:block ${isActive ? 'text-blue-800' : 'text-slate-500'}`}>{label}</span>
+    </div>
+  );
+};
+
+const QuizInterface = ({ questions, onPass, onBack }) => {
+  const [currentQIndex, setCurrentQIndex] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [showResult, setShowResult] = useState(false);
+  const [passed, setPassed] = useState(false);
+  const [score, setScore] = useState(0);
+
+  const handleSelect = (optIndex) => {
+    setAnswers({ ...answers, [currentQIndex]: optIndex });
+  };
+
+  const handleSubmit = () => {
+    let correctCount = 0;
+    questions.forEach((q, i) => {
+      if (answers[i] === q.correctAnswer) correctCount++;
+    });
+
+    const percentage = (correctCount / questions.length) * 100;
+    setScore(correctCount);
+    setShowResult(true);
+    setPassed(percentage >= 70);
+  };
+
+  if (showResult) {
+    return (
+      <div className="text-center py-10">
+        <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 ${passed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+          {passed ? <CheckCircle size={48} /> : <Lock size={48} />}
+        </div>
+        <h2 className="text-3xl font-bold mb-2">{passed ? "Quiz Passed!" : "Quiz Failed"}</h2>
+        <p className="text-slate-500 mb-8 text-lg">You scored {score} out of {questions.length} ({Math.round((score / questions.length) * 100)}%)</p>
+
+        {passed ? (
+          <button onClick={onPass} className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg">
+            Complete Topic & Continue →
+          </button>
+        ) : (
+          <button onClick={() => { setShowResult(false); setCurrentQIndex(0); setAnswers({}); }} className="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold">
+            Try Again
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const q = questions[currentQIndex];
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6 flex justify-between items-end">
+        <h3 className="text-xl font-bold text-slate-800">Question {currentQIndex + 1} of {questions.length}</h3>
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Single Choice</span>
+      </div>
+
+      <div className="mb-8">
+        <p className="text-lg text-slate-700 font-medium mb-6">{q.question}</p>
+        <div className="space-y-3">
+          {q.options.map((opt, i) => (
+            <div
+              key={i}
+              onClick={() => handleSelect(i)}
+              className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 flex items-center gap-3 ${answers[currentQIndex] === i
+                ? 'border-blue-600 bg-blue-50 text-blue-800 shadow-md'
+                : 'border-slate-100 bg-white hover:border-slate-300 text-slate-600'
+                }`}
+            >
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${answers[currentQIndex] === i ? 'border-blue-600' : 'border-slate-300'}`}>
+                {answers[currentQIndex] === i && <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />}
+              </div>
+              <span className="font-medium">{opt}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex justify-between pt-6 border-t border-slate-100">
+        <button
+          onClick={currentQIndex === 0 ? onBack : () => setCurrentQIndex(currentQIndex - 1)}
+          className="text-slate-400 hover:text-slate-600 font-bold"
+        >
+          Back
+        </button>
+
+        {currentQIndex < questions.length - 1 ? (
+          <button
+            onClick={() => setCurrentQIndex(currentQIndex + 1)}
+            disabled={answers[currentQIndex] === undefined}
+            className="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-900"
+          >
+            Next Question
+          </button>
+        ) : (
+          <button
+            onClick={handleSubmit}
+            disabled={answers[currentQIndex] === undefined}
+            className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Submit Quiz
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Classroom;
