@@ -492,6 +492,26 @@ export default function AdminDashboard() {
                             )}
                         </div>
 
+                        {/* Revenue per College */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm">
+                            <h3 className="font-bold text-lg mb-4">Revenue per College</h3>
+
+                            {Object.keys(revenuePerCollege).length === 0 ? (
+                                <p className="text-slate-500 italic">No revenue yet.</p>
+                            ) : (
+                                <ul className="space-y-3">
+                                    {Object.entries(revenuePerCollege).map(([college, amount]) => (
+                                        <li
+                                            key={college}
+                                            className="flex justify-between items-center border-b pb-2"
+                                        >
+                                            <span className="font-medium text-slate-700">{college}</span>
+                                            <span className="font-bold text-green-600">₹{amount}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
 
 
                         <div className="bg-white p-6 rounded-xl shadow-sm">
@@ -627,25 +647,7 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 )}
-                <div className="bg-white p-6 rounded-xl shadow-sm mt-6">
-                    <h3 className="font-bold text-lg mb-4">Revenue per College</h3>
 
-                    {Object.keys(revenuePerCollege).length === 0 ? (
-                        <p className="text-slate-500 italic">No revenue yet.</p>
-                    ) : (
-                        <ul className="space-y-3">
-                            {Object.entries(revenuePerCollege).map(([college, amount]) => (
-                                <li
-                                    key={college}
-                                    className="flex justify-between items-center border-b pb-2"
-                                >
-                                    <span className="font-medium text-slate-700">{college}</span>
-                                    <span className="font-bold text-green-600">₹{amount}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
 
 
                 {/* VIEW 4: CREATE COURSE (The Builder) */}

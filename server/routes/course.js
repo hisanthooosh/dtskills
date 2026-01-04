@@ -71,10 +71,39 @@ router.post('/complete-topic', async (req, res) => {
           $addToSet: {
             "enrolledCourses.$.completedTopics": topicId
           }
+
         },
         { new: true } // Return the updated document
       );
-      return res.json({ msg: "Progress saved", progress: updatedUser.enrolledCourses });
+      // 🔽 AUTO COURSE COMPLETION CHECK (NEW)
+      const userWithCourse = await User.findById(userId)
+        .populate('enrolledCourses.courseId');
+
+      const enrollment = userWithCourse.enrolledCourses.find(
+        e => e.courseId._id.toString() === courseId
+      );
+
+      const course = enrollment.courseId;
+
+      // Count topics ONLY from modules 1–5
+      let totalCourseTopics = 0;
+      course.modules.slice(0, 5).forEach(module => {
+        totalCourseTopics += module.topics.length;
+      });
+
+      // Auto mark course completed
+      if (enrollment.completedTopics.length >= totalCourseTopics) {
+        enrollment.courseCompleted = true;
+        await userWithCourse.save();
+      }
+
+      return res.json({
+        msg: "Progress saved",
+        completedTopics: enrollment.completedTopics.length,
+        totalCourseTopics,
+        courseCompleted: enrollment.courseCompleted
+      });
+
     } else {
       // SCENARIO B: User is NOT enrolled yet. Enroll them + Add topic.
       const newUserUpdate = await User.findByIdAndUpdate(
@@ -90,7 +119,12 @@ router.post('/complete-topic', async (req, res) => {
         },
         { new: true }
       );
-      return res.json({ msg: "Enrolled & Progress saved", progress: newUserUpdate.enrolledCourses });
+      return res.json({
+        msg: "Enrolled & Progress saved",
+        completedTopics: 1,
+        courseCompleted: false
+      });
+
     }
 
   } catch (err) {

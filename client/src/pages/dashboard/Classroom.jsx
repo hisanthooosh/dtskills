@@ -132,9 +132,9 @@ const Classroom = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  
 
-  
+
+
 
   const completeTopic = async () => {
     try {
@@ -175,56 +175,119 @@ const Classroom = () => {
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
 
       {/* --- SIDEBAR --- */}
-      <aside className="w-80 bg-white border-r border-slate-200 flex flex-col h-full z-20 shadow-lg hidden md:flex">
-        <div className="p-5 border-b border-slate-100">
-          <button onClick={() => navigate('/dashboard/my-learning')} className="flex items-center text-slate-500 hover:text-blue-600 text-sm font-medium mb-3 transition">
-            <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
+      {/* ===== PREMIUM DESKTOP SIDEBAR ===== */}
+      <aside className="w-80 bg-gradient-to-b from-white to-slate-50 border-r border-slate-200 flex flex-col h-full shadow-xl">
+
+        {/* Header */}
+        <div className="p-6 border-b border-slate-200">
+          <button
+            onClick={() => navigate('/dashboard/my-learning')}
+            className="text-xs font-semibold text-slate-500 hover:text-blue-600 mb-3 flex items-center gap-1"
+          >
+            <ArrowLeft size={14} /> Back
           </button>
-          <h2 className="font-bold text-lg text-slate-800 leading-tight">{course.title}</h2>
+
+          <h2 className="text-lg font-extrabold text-slate-900 leading-tight">
+            {course.title}
+          </h2>
+
+          <p className="text-xs text-slate-500 mt-1">
+            Course Progress
+          </p>
+
+          {/* Progress Bar */}
+          <div className="mt-3 w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+            <div
+              className="bg-blue-600 h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${course.modules
+                    .slice(0, 5)
+                    .flatMap(m => m.topics)
+                    .filter(t =>
+                      completedTopics.some(
+                        id => id?.toString() === t._id?.toString()
+                      )
+                    ).length /
+                  course.modules
+                    .slice(0, 5)
+                    .flatMap(m => m.topics).length * 100
+                  }%`
+              }}
+            />
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {course.modules.map((mod, mIdx) => (
-            <div key={mIdx} className="border-b border-slate-50">
-              <div className="bg-slate-50/50 px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider sticky top-0 backdrop-blur-sm">
-                {mod.title}
-              </div>
-              <div>
-                {mod.topics.map((topic, tIdx) => {
-                  const isActive = activeModuleIndex === mIdx && activeTopicIndex === tIdx;
-                  const isCompleted = completedTopics.includes(topic._id);
-                  const tData = getTopicData(topic);
+        {/* Modules */}
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-5">
 
-                  return (
-                    <button
-                      key={tIdx}
-                      onClick={() => handleTopicClick(mIdx, tIdx)}
-                      className={`w-full text-left px-5 py-4 flex items-start gap-3 transition-all duration-200 border-l-4 ${isActive
-                        ? 'bg-blue-50 border-blue-600'
-                        : 'border-transparent hover:bg-slate-50'
-                        }`}
-                    >
-                      <div className={`mt-0.5 ${isCompleted ? 'text-green-500' : (isActive ? 'text-blue-600' : 'text-slate-400')}`}>
-                        {isCompleted ? <CheckCircle size={18} /> : (isActive ? <div className="w-4 h-4 rounded-full border-4 border-blue-600" /> : <div className="w-4 h-4 rounded-full border-2 border-slate-300" />)}
-                      </div>
-                      <div className="flex-1">
-                        <p className={`text-sm font-medium ${isActive ? 'text-blue-700' : 'text-slate-700'}`}>{topic.title}</p>
-                        <p className="text-[10px] text-slate-400 mt-1 flex gap-2">
-                          <span className="flex items-center gap-1">
-                            {tData.videos.length > 0 ? <Youtube size={10} /> : <FileText size={10} />}
-                            {tData.videos.length > 0 ? 'Video' : 'Reading'}
-                          </span>
-                          {tData.quizzes.length > 0 && <span className="flex items-center gap-1"><HelpCircle size={10} /> Quiz</span>}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+          {course.modules.map((module, mIdx) => {
+            const isInternship = mIdx >= 5;
+
+            return (
+              <div
+                key={mIdx}
+                className={`rounded-xl border ${isInternship
+                    ? 'border-dashed border-yellow-300 bg-yellow-50/40'
+                    : 'border-slate-200 bg-white'
+                  } p-4`}
+              >
+                {/* Module Header */}
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-bold text-slate-800">
+                    Module {mIdx + 1}
+                  </h3>
+
+                  {isInternship ? (
+                    <span className="text-[10px] px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 font-bold">
+                      🔒 Internship
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-bold">
+                      Course
+                    </span>
+                  )}
+                </div>
+
+                {/* Topics */}
+                {!isInternship && (
+                  <div className="space-y-1">
+                    {module.topics.map((topic, tIdx) => {
+                      const isCompleted = completedTopics.some(
+                        id => id?.toString() === topic._id?.toString()
+                      );
+
+                      const isActive =
+                        mIdx === activeModuleIndex &&
+                        tIdx === activeTopicIndex;
+
+                      return (
+                        <button
+                          key={topic._id}
+                          onClick={() => handleTopicClick(mIdx, tIdx)}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all
+                      ${isActive
+                              ? 'bg-blue-600 text-white shadow-md'
+                              : 'hover:bg-slate-100 text-slate-700'
+                            }`}
+                        >
+                          {isCompleted ? (
+                            <CheckCircle size={14} className="text-green-400" />
+                          ) : (
+                            <PlayCircle size={14} />
+                          )}
+
+                          <span className="truncate">{topic.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </aside>
+
 
       {/* --- MAIN CONTENT --- */}
       <main className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-10 relative">
