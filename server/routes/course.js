@@ -50,7 +50,6 @@ router.post('/publish', async (req, res) => {
   }
 });
 
-// --- 4. MARK TOPIC AS COMPLETE (FIXED & SAFER) ---
 router.post('/complete-topic', async (req, res) => {
   const { userId, courseId, topicId } = req.body;
 
@@ -59,78 +58,63 @@ router.post('/complete-topic', async (req, res) => {
   }
 
   try {
-    // 1. Try to find the user and specific enrollment
-    const user = await User.findOne({ _id: userId, "enrolledCourses.courseId": courseId });
+    const user = await User.findById(userId).populate(
+      'enrolledCourses.courseId'
+    );
 
-    if (user) {
-      // SCENARIO A: User is already enrolled. Add topic to completedTopics.
-      // $addToSet ensures we don't add the same topicId twice
-      const updatedUser = await User.findOneAndUpdate(
-        { _id: userId, "enrolledCourses.courseId": courseId },
-        {
-          $addToSet: {
-            "enrolledCourses.$.completedTopics": topicId
-          }
-
-        },
-        { new: true } // Return the updated document
-      );
-      // 🔽 AUTO COURSE COMPLETION CHECK (NEW)
-      const userWithCourse = await User.findById(userId)
-        .populate('enrolledCourses.courseId');
-
-      const enrollment = userWithCourse.enrolledCourses.find(
-        e => e.courseId._id.toString() === courseId
-      );
-
-      const course = enrollment.courseId;
-
-      // Count topics ONLY from modules 1–5
-      let totalCourseTopics = 0;
-      course.modules.slice(0, 5).forEach(module => {
-        totalCourseTopics += module.topics.length;
-      });
-
-      // Auto mark course completed
-      if (enrollment.completedTopics.length >= totalCourseTopics) {
-        enrollment.courseCompleted = true;
-        await userWithCourse.save();
-      }
-
-      return res.json({
-        msg: "Progress saved",
-        completedTopics: enrollment.completedTopics.length,
-        totalCourseTopics,
-        courseCompleted: enrollment.courseCompleted
-      });
-
-    } else {
-      // SCENARIO B: User is NOT enrolled yet. Enroll them + Add topic.
-      const newUserUpdate = await User.findByIdAndUpdate(
-        userId,
-        {
-          $push: {
-            enrolledCourses: {
-              courseId: courseId,
-              completedTopics: [topicId],
-              enrolledAt: new Date()
-            }
-          }
-        },
-        { new: true }
-      );
-      return res.json({
-        msg: "Enrolled & Progress saved",
-        completedTopics: 1,
-        courseCompleted: false
-      });
-
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
     }
 
+    // ✅ SAFE enrollment lookup
+    const enrollment = user.enrolledCourses.find(
+      e =>
+        e.courseId &&
+        e.courseId._id.toString() === courseId.toString()
+    );
+
+    if (!enrollment) {
+      return res.status(404).json({ msg: "Enrollment not found" });
+    }
+
+    // ✅ Add topic only once
+    if (!enrollment.completedTopics.includes(topicId)) {
+      enrollment.completedTopics.push(topicId);
+    }
+
+    const course = enrollment.courseId;
+
+    // 🔢 Count ONLY modules 1–5
+    let totalCourseTopics = 0;
+    course.modules.slice(0, 5).forEach(module => {
+      totalCourseTopics += module.topics.length;
+    });
+
+    // ✅ Auto-complete course
+    if (
+      enrollment.completedTopics.length >= totalCourseTopics &&
+      !enrollment.courseCompleted
+    ) {
+      enrollment.courseCompleted = true;
+      enrollment.courseCertificateIssued = true;
+      enrollment.internshipUnlocked = true; // optional
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      completedCount: enrollment.completedTopics.length,
+      totalCourseTopics,
+      courseCompleted: enrollment.courseCompleted,
+      certificateIssued: enrollment.courseCertificateIssued
+    });
   } catch (err) {
     console.error("Complete Topic Error:", err);
-    res.status(500).send("Server Error");
+    res.status(500).json({ error: err.message });
   }
 });
+
+
 
 module.exports = router;

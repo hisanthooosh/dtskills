@@ -1,70 +1,75 @@
 const mongoose = require('mongoose');
 
-const UserSchema = new mongoose.Schema({
-  // --- Auth Fields ---
-  username: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  role: { type: String, default: 'student', enum: ['student', 'admin'] },
+const EnrolledCourseSchema = new mongoose.Schema({
+  courseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course',
+    required: true
+  },
 
-  // --- Face Auth Data (Important) ---
-  faceDescriptor: { type: Array, default: [] },
+  completedTopics: {
+    type: [String],
+    default: []
+  },
 
-  // --- Student Details ---
-  name: { type: String },
-  rollNumber: { type: String },
-  collegeName: { type: String },
+  courseCompleted: {
+    type: Boolean,
+    default: false
+  },
 
-  // --- References ---
-  collegeId: { type: mongoose.Schema.Types.ObjectId, ref: 'College' },
+  courseCertificateIssued: {
+    type: Boolean,
+    default: false
+  },
 
-  // --- Enrolled Courses ---
-  enrolledCourses: [{
-    courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
-    // 👇 THIS WAS MISSING AND CAUSING THE CRASH 👇
-    completedTopics: [{ type: String }],
-    // ---------------------------------------------
-    enrolledCourses: [{
-      courseId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Course'
-      },
+  internshipUnlocked: {
+    type: Boolean,
+    default: false
+  },
 
-      completedTopics: {
-        type: [String],
-        default: []
-      },
+  isPaid: {
+    type: Boolean,
+    default: false
+  },
 
-      isPaid: {
-        type: Boolean,
-        default: false
-      },
+  enrolledAt: {
+    type: Date,
+    default: Date.now
+  }
+});
 
-      // ✅ PHASE-1 FLAG
-      courseCompleted: {
-        type: Boolean,
-        default: false
-      },
+const UserSchema = new mongoose.Schema(
+  {
+    // --- Auth ---
+    username: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ['student', 'admin'],
+      default: 'student'
+    },
 
-      // future phases (keep now)
-      aicteVerified: {
-        type: Boolean,
-        default: false
-      },
-      internshipUnlocked: {
-        type: Boolean,
-        default: false
-      },
+    // --- Face Auth ---
+    faceDescriptor: { type: Array, default: [] },
 
-      enrolledAt: {
-        type: Date,
-        default: Date.now
-      }
-    }],
+    // --- Student Info ---
+    name: String,
+    rollNumber: String,
+    collegeName: String,
 
-    isPaid: { type: Boolean, default: false },
-    enrolledAt: { type: Date, default: Date.now }
-  }]
-}, { timestamps: true });
+    collegeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'College'
+    },
+
+    // ✅ CORRECT STRUCTURE
+    enrolledCourses: {
+      type: [EnrolledCourseSchema],
+      default: []
+    }
+  },
+  { timestamps: true }
+);
 
 module.exports = mongoose.model('User', UserSchema);
