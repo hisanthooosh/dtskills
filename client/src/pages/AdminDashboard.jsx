@@ -29,6 +29,42 @@ export default function AdminDashboard() {
 
     const [courses, setCourses] = useState([]);
     const [students, setStudents] = useState([]);
+    // ---------------- REVENUE CALCULATIONS ----------------
+
+    // Total paid enrollments
+    const paidEnrollments = students.flatMap(s =>
+        s.enrolledCourses?.filter(c => c.isPaid) || []
+    );
+
+    // 1️⃣ TOTAL REVENUE
+    const TOTAL_REVENUE = paidEnrollments.length * 200;
+
+    // 2️⃣ PAID vs UNPAID
+    const PAID_COUNT = paidEnrollments.length;
+    const UNPAID_COUNT = students.length - PAID_COUNT;
+
+    // 3️⃣ REVENUE PER COURSE
+    const revenuePerCourse = {};
+    students.forEach(student => {
+        student.enrolledCourses?.forEach(c => {
+            if (c.isPaid && c.courseId?.title) {
+                revenuePerCourse[c.courseId.title] =
+                    (revenuePerCourse[c.courseId.title] || 0) + 200;
+            }
+        });
+    });
+
+    // 4️⃣ REVENUE PER COLLEGE
+    const revenuePerCollege = {};
+    students.forEach(student => {
+        if (!student.collegeName) return;
+        const paid = student.enrolledCourses?.some(c => c.isPaid);
+        if (paid) {
+            revenuePerCollege[student.collegeName] =
+                (revenuePerCollege[student.collegeName] || 0) + 200;
+        }
+    });
+
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState(null); // Track if editing a draft
 
@@ -38,6 +74,9 @@ export default function AdminDashboard() {
     // --- BUILDER STATE ---
     // FIX: Changed 'chapters' to 'modules' to match backend
     const [courseData, setCourseData] = useState({ title: '', description: '', price: 200, modules: [] });
+    // 🔹 COURSE / INTERNSHIP SPLIT
+    const COURSE_MODULE_LIMIT = 5;
+
     const [newModuleTitle, setNewModuleTitle] = useState('');
     const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
 
@@ -404,11 +443,56 @@ export default function AdminDashboard() {
                 {activeTab === 'overview' && (
                     <div className="space-y-6">
                         <h2 className="text-2xl font-bold text-slate-800">Dashboard Overview</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <StatsCard title="Total Students" value={students.length} color="border-blue-500" icon={Users} />
-                            <StatsCard title="Total Revenue" value={`₹${students.reduce((acc, s) => acc + (s.enrolledCourses?.filter(c => c.isPaid).length * 200 || 0), 0)}`} color="border-green-500" icon={Users} />
-                            <StatsCard title="Active Courses" value={courses.length} color="border-purple-500" icon={BookOpen} />
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <StatsCard
+                                title="Total Students"
+                                value={students.length}
+                                color="border-blue-500"
+                                icon={Users}
+                            />
+
+                            <StatsCard
+                                title="Total Revenue"
+                                value={`₹${TOTAL_REVENUE}`}
+                                color="border-green-500"
+                                icon={Users}
+                            />
+
+                            <StatsCard
+                                title="Paid Students"
+                                value={PAID_COUNT}
+                                color="border-emerald-500"
+                                icon={CheckCircle}
+                            />
+
+                            <StatsCard
+                                title="Unpaid Students"
+                                value={UNPAID_COUNT}
+                                color="border-yellow-500"
+                                icon={Lock}
+                            />
                         </div>
+                        <div className="bg-white p-6 rounded-xl shadow-sm">
+                            <h3 className="font-bold text-lg mb-4">Revenue per Course</h3>
+
+                            {Object.keys(revenuePerCourse).length === 0 ? (
+                                <p className="text-slate-500 italic">No revenue yet.</p>
+                            ) : (
+                                <ul className="space-y-3">
+                                    {Object.entries(revenuePerCourse).map(([course, amount]) => (
+                                        <li
+                                            key={course}
+                                            className="flex justify-between items-center border-b pb-2"
+                                        >
+                                            <span className="font-medium text-slate-700">{course}</span>
+                                            <span className="font-bold text-green-600">₹{amount}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+
+
 
                         <div className="bg-white p-6 rounded-xl shadow-sm">
                             <h3 className="font-bold text-lg mb-4">Recent Registrations</h3>
@@ -438,25 +522,73 @@ export default function AdminDashboard() {
                                         <th className="p-4 font-bold text-slate-600">Name</th>
                                         <th className="p-4 font-bold text-slate-600">College</th>
                                         <th className="p-4 font-bold text-slate-600">Email</th>
-                                        <th className="p-4 font-bold text-slate-600">Courses</th>
+                                        <th className="p-4 font-bold text-slate-600">Payment</th>
+                                        <th className="p-4 font-bold text-slate-600">Course</th>
+                                        <th className="p-4 font-bold text-slate-600">AICTE</th>
+                                        <th className="p-4 font-bold text-slate-600">Internship</th>
+                                        <th className="p-4 font-bold text-slate-600">Certificate</th>
                                     </tr>
                                 </thead>
+
                                 <tbody>
-                                    {students.map(student => (
-                                        <tr key={student._id} className="border-b hover:bg-slate-50">
-                                            <td className="p-4 font-bold text-slate-800">{student.name}</td>
-                                            <td className="p-4 text-sm text-slate-600">{student.collegeName}</td>
-                                            <td className="p-4 text-sm text-slate-500">{student.email}</td>
-                                            <td className="p-4">
-                                                {student.enrolledCourses?.map((enr, idx) => (
-                                                    <span key={idx} className={`text-xs px-2 py-1 rounded mr-1 ${enr.isPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                        {enr.isPaid ? 'Paid' : 'Unpaid'}
-                                                    </span>
-                                                ))}
-                                                {student.enrolledCourses?.length === 0 && <span className="text-xs text-slate-400">None</span>}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {students.map(student => {
+                                        const enrollment = student.enrolledCourses?.[0]; // single course assumption
+
+                                        const courseCompleted = enrollment?.courseCompleted;
+                                        const aicteVerified = enrollment?.aicteVerified;
+                                        const internshipUnlocked = enrollment?.internshipUnlocked;
+                                        const internshipCompleted = enrollment?.internshipCompleted;
+                                        const certificateIssued = internshipCompleted; // simple rule
+
+                                        return (
+                                            <tr key={student._id} className="border-b hover:bg-slate-50">
+                                                {/* NAME */}
+                                                <td className="p-4 font-bold text-slate-800">{student.name}</td>
+
+                                                {/* COLLEGE */}
+                                                <td className="p-4 text-sm text-slate-600">{student.collegeName}</td>
+
+                                                {/* EMAIL */}
+                                                <td className="p-4 text-sm text-slate-500">{student.email}</td>
+
+                                                {/* PAYMENT */}
+                                                <td className="p-4">
+                                                    {enrollment?.isPaid ? (
+                                                        <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-bold">
+                                                            Paid
+                                                        </span>
+                                                    ) : (
+                                                        <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded font-bold">
+                                                            Unpaid
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                {/* COURSE COMPLETED */}
+                                                <td className="p-4">
+                                                    {courseCompleted ? '✅' : '❌'}
+                                                </td>
+
+                                                {/* AICTE VERIFIED */}
+                                                <td className="p-4">
+                                                    {aicteVerified ? '✅' : '❌'}
+                                                </td>
+
+                                                {/* INTERNSHIP STATUS */}
+                                                <td className="p-4">
+                                                    {!internshipUnlocked && '🔒 Locked'}
+                                                    {internshipUnlocked && !internshipCompleted && '🟡 Ongoing'}
+                                                    {internshipCompleted && '🟢 Completed'}
+                                                </td>
+
+                                                {/* CERTIFICATE */}
+                                                <td className="p-4">
+                                                    {certificateIssued ? '🎓 Issued' : '—'}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+
                                 </tbody>
                             </table>
                         </div>
@@ -495,6 +627,26 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 )}
+                <div className="bg-white p-6 rounded-xl shadow-sm mt-6">
+                    <h3 className="font-bold text-lg mb-4">Revenue per College</h3>
+
+                    {Object.keys(revenuePerCollege).length === 0 ? (
+                        <p className="text-slate-500 italic">No revenue yet.</p>
+                    ) : (
+                        <ul className="space-y-3">
+                            {Object.entries(revenuePerCollege).map(([college, amount]) => (
+                                <li
+                                    key={college}
+                                    className="flex justify-between items-center border-b pb-2"
+                                >
+                                    <span className="font-medium text-slate-700">{college}</span>
+                                    <span className="font-bold text-green-600">₹{amount}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
 
                 {/* VIEW 4: CREATE COURSE (The Builder) */}
                 {activeTab === 'create' && (
@@ -603,6 +755,15 @@ export default function AdminDashboard() {
                                 <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
                                     <div>
                                         <h3 className="font-bold text-lg">Course Preview</h3>
+                                        <div className="flex gap-3 mt-2 text-xs font-bold">
+                                            <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">
+                                                🟦 COURSE → Learning Phase
+                                            </span>
+                                            <span className="flex items-center gap-1 bg-yellow-50 text-yellow-800 px-2 py-1 rounded border border-yellow-300">
+                                                🟨 INTERNSHIP → Practical Phase
+                                            </span>
+                                        </div>
+
                                         <p className="text-xs text-slate-400">{courseData.title || "Untitled Course"}</p>
                                     </div>
                                     <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">
@@ -614,12 +775,29 @@ export default function AdminDashboard() {
                                     {courseData.modules.map((c, i) => (
                                         <div key={i} className="bg-white border border-slate-300 rounded-lg overflow-hidden shadow-sm">
                                             <div className="bg-slate-100 p-3 border-b border-slate-200 flex justify-between items-center group">
-                                                <div className="flex items-center gap-2">
+                                                {/* LEFT SIDE: Module info */}
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    {/* Module number */}
                                                     <span className="bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                                                         Module {i + 1}
                                                     </span>
+
+                                                    {/* Module title */}
                                                     <span className="font-bold text-slate-800">{c.title}</span>
+
+                                                    {/* COURSE / INTERNSHIP BADGE */}
+                                                    {i < 5 ? (
+                                                        <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full border border-blue-200">
+                                                            🟦 COURSE
+                                                        </span>
+                                                    ) : (
+                                                        <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded-full border border-yellow-300">
+                                                            🟨 INTERNSHIP
+                                                        </span>
+                                                    )}
                                                 </div>
+
+                                                {/* RIGHT SIDE: Delete button */}
                                                 <button
                                                     onClick={() => deleteModule(i)}
                                                     className="text-slate-400 hover:text-red-600 transition p-1 hover:bg-red-50 rounded"
@@ -628,6 +806,7 @@ export default function AdminDashboard() {
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
+
 
                                             <div className="divide-y divide-slate-100">
                                                 {c.topics.length === 0 && (
