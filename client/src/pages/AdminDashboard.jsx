@@ -430,9 +430,17 @@ export default function AdminDashboard() {
                 </nav>
 
                 <div className="p-4 border-t border-slate-800">
-                    <button onClick={() => navigate('/')} className="flex items-center gap-2 text-red-400 hover:text-red-300 w-full p-2">
-                        <LogOut size={18} /> Logout
+                    
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem('adminAuth');
+                            window.location.href = '/admin-login';
+                        }}
+                        className="bg-red-600 text-white px-4 py-2 rounded"
+                    >
+                        Logout
                     </button>
+
                 </div>
             </aside>
 

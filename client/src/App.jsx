@@ -15,6 +15,11 @@ import Profile from './pages/dashboard/Profile';
 import HodLogin from './pages/hod/HodLogin';
 import HodDashboard from './pages/hod/HodDashboard';
 
+import AdminLogin from './pages/AdminLogin';
+import AdminProtectedRoute from './routes/AdminProtectedRoute';
+
+
+
 function App() {
   return (
     <Router>
@@ -42,6 +47,17 @@ function App() {
         <Route path="/Classroom/:id" element={<Classroom />} />
         <Route path="/hod-login" element={<HodLogin />} />
         <Route path="/hod-dashboard" element={<HodDashboard />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+
+        <Route
+          path="/admin"
+          element={
+            <AdminProtectedRoute>
+              <AdminDashboard />
+            </AdminProtectedRoute>
+          }
+        />
+
 
       </Routes>
     </Router>
