@@ -7,7 +7,7 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const ADMIN_EMAIL = 'hisanthoosh30@gmail.com';
+  const ADMIN_EMAIL = 'iamsanthoosh30@gmail.com';
   const ADMIN_PASSWORD = 'Hisanthu30@MBU';
 
   const handleSubmit = (e) => {
