@@ -101,6 +101,13 @@ export default function AdminDashboard() {
         setPreviewTopic(topic);
         setPreviewStep('reading');
     };
+    useEffect(() => {
+        const admin = localStorage.getItem('admin');
+        if (!admin) {
+            window.location.href = '/admin';
+        }
+    }, []);
+
 
     useEffect(() => {
         fetchData();
@@ -430,7 +437,7 @@ export default function AdminDashboard() {
                 </nav>
 
                 <div className="p-4 border-t border-slate-800">
-                    
+
                     <button
                         onClick={() => {
                             localStorage.removeItem('adminAuth');

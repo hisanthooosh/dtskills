@@ -14,6 +14,8 @@ const authRoutes = require('./routes/auth');
 const collegeRoutes = require('./routes/college');
 const courseRoutes = require('./routes/course'); // Fixed typo here
 const studentRoutes = require('./routes/student'); // <--- 1. ADD THIS IMPORT
+const adminAuthRoutes = require('./routes/adminAuth');
+
 
 const app = express();
 
@@ -35,6 +37,9 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/internship', require('./routes/internship'));
 app.use('/api/documents', require('./routes/documents'));
 app.use('/api/certificates', require('./routes/certificates'));
+app.use('/api/admin-auth', adminAuthRoutes);
+app.use('/api/admin-manage', require('./routes/adminManage'));
+
 
 
 

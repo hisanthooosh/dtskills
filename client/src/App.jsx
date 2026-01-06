@@ -15,8 +15,11 @@ import Profile from './pages/dashboard/Profile';
 import HodLogin from './pages/hod/HodLogin';
 import HodDashboard from './pages/hod/HodDashboard';
 
-import AdminLogin from './pages/AdminLogin';
+
 import AdminProtectedRoute from './routes/AdminProtectedRoute';
+import AdminLogin from './pages/AdminLogin';
+import AdminCourses from './pages/AdminCourses';
+
 
 
 
@@ -28,38 +31,45 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/admin" element={<AdminDashboard />} />
 
         {/* Student Dashboard */}
         <Route path="/dashboard" element={<DashboardLayout />}>
-          {/* This directs /dashboard to My Learning automatically */}
           <Route index element={<MyLearning />} />
-
-          {/* This matches the Sidebar Link: /dashboard/my-learning */}
           <Route path="my-learning" element={<MyLearning />} />
-
           <Route path="catalog" element={<CourseCatalog />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 
-        {/* --- 👇 FIX: SUPPORT BOTH LOWERCASE AND UPPERCASE PATHS 👇 --- */}
+        {/* Classroom */}
         <Route path="/classroom/:id" element={<Classroom />} />
-        <Route path="/Classroom/:id" element={<Classroom />} />
+
+        {/* HOD */}
         <Route path="/hod-login" element={<HodLogin />} />
         <Route path="/hod-dashboard" element={<HodDashboard />} />
+
+        {/* ADMIN */}
         <Route path="/admin-login" element={<AdminLogin />} />
 
         <Route
-          path="/admin"
+          path="/admin/dashboard"
           element={
-            <AdminProtectedRoute>
+            <AdminProtectedRoute allowedRole="super_admin">
               <AdminDashboard />
             </AdminProtectedRoute>
           }
         />
 
+        <Route
+          path="/admin/courses"
+          element={
+            <AdminProtectedRoute allowedRole="course_admin">
+              <AdminCourses />
+            </AdminProtectedRoute>
+          }
+        />
 
       </Routes>
+
     </Router>
   );
 }

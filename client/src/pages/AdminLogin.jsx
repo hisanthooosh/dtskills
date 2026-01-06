@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 export default function AdminLogin() {
@@ -7,32 +8,43 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const ADMIN_EMAIL = 'iamsanthoosh30@gmail.com';
-  const ADMIN_PASSWORD = 'Hisanthu30@MBU';
-
-  const handleSubmit = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setError('');
 
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      localStorage.setItem('adminAuth', 'true');
-      navigate('/admin');
-    } else {
-      setError('Invalid admin credentials');
+    try {
+      const res = await axios.post(
+        'http://localhost:5000/api/admin-auth/login',
+        { email, password }
+      );
+
+      localStorage.setItem('admin', JSON.stringify(res.data.admin));
+      localStorage.setItem('adminToken', res.data.token);
+
+      if (res.data.admin.role === 'super_admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/admin/courses');
+      }
+
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed');
+
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm"
+        onSubmit={handleLogin}
+        className="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm"
       >
-        <h1 className="text-2xl font-bold mb-6 text-center">
+        <h2 className="text-2xl font-bold mb-6 text-center">
           Admin Login
-        </h1>
+        </h2>
 
         {error && (
-          <div className="mb-4 text-red-600 bg-red-50 p-2 rounded">
+          <div className="mb-4 text-red-600 text-sm">
             {error}
           </div>
         )}
@@ -40,7 +52,7 @@ export default function AdminLogin() {
         <input
           type="email"
           placeholder="Admin Email"
-          className="w-full mb-4 p-3 border rounded-lg"
+          className="w-full mb-4 px-4 py-2 border rounded-lg"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -49,7 +61,7 @@ export default function AdminLogin() {
         <input
           type="password"
           placeholder="Password"
-          className="w-full mb-6 p-3 border rounded-lg"
+          className="w-full mb-6 px-4 py-2 border rounded-lg"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -57,9 +69,9 @@ export default function AdminLogin() {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700"
+          className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold"
         >
-          Login as Admin
+          Login
         </button>
       </form>
     </div>
