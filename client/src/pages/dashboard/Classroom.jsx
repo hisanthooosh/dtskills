@@ -17,10 +17,17 @@ const Classroom = () => {
   const [activeModuleIndex, setActiveModuleIndex] = useState(0);
   const [activeTopicIndex, setActiveTopicIndex] = useState(0);
 
+
   // FLOW STATE: 'reading' -> 'watching' -> 'quiz'
   const [currentStep, setCurrentStep] = useState('reading');
   const [completedTopics, setCompletedTopics] = useState([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [githubRepo, setGithubRepo] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+
+
 
   // Auth State
   const studentLocal = JSON.parse(localStorage.getItem('student'));
@@ -94,6 +101,8 @@ const Classroom = () => {
   if (!course.modules || course.modules.length === 0) return <div className="p-10 text-center text-red-500">Course content is empty.</div>;
 
   const currentModule = course.modules[activeModuleIndex];
+  const isFinalInternshipModule = activeModuleIndex === 9;
+
   // --- CRITICAL FIX: Optional Chaining to prevent crash if index is bad ---
   const currentTopic = currentModule?.topics ? currentModule.topics[activeTopicIndex] : null;
 
@@ -170,6 +179,35 @@ const Classroom = () => {
       navigate('/dashboard/profile');
     }
   };
+  const showGithubSubmission =
+    activeModuleIndex === 9 &&
+    activeTopicIndex === currentModule.topics.length - 1;
+
+  const submitGithubRepo = async () => {
+    if (!githubRepo) {
+      alert('Please enter GitHub repository link');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      await axios.post('http://localhost:5000/api/internship/submit', {
+        userId,
+        courseId: id,
+        githubRepo
+      });
+
+      setSubmitted(true);
+      alert('✅ GitHub repository submitted');
+      navigate('/dashboard/profile');
+    } catch (err) {
+      alert(err.response?.data?.msg || 'Submission failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
@@ -201,13 +239,13 @@ const Classroom = () => {
               className="bg-blue-600 h-full rounded-full transition-all duration-500"
               style={{
                 width: `${course.modules
-                    .slice(0, 5)
-                    .flatMap(m => m.topics)
-                    .filter(t =>
-                      completedTopics.some(
-                        id => id?.toString() === t._id?.toString()
-                      )
-                    ).length /
+                  .slice(0, 5)
+                  .flatMap(m => m.topics)
+                  .filter(t =>
+                    completedTopics.some(
+                      id => id?.toString() === t._id?.toString()
+                    )
+                  ).length /
                   course.modules
                     .slice(0, 5)
                     .flatMap(m => m.topics).length * 100
@@ -227,8 +265,8 @@ const Classroom = () => {
               <div
                 key={mIdx}
                 className={`rounded-xl border ${isInternship
-                    ? 'border-dashed border-yellow-300 bg-yellow-50/40'
-                    : 'border-slate-200 bg-white'
+                  ? 'border-dashed border-yellow-300 bg-yellow-50/40'
+                  : 'border-slate-200 bg-white'
                   } p-4`}
               >
                 {/* Module Header */}
@@ -362,6 +400,47 @@ const Classroom = () => {
                   )}
                 </div>
               )}
+              {isFinalInternshipModule && (
+                <div className="mt-12 bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
+                  <h2 className="text-xl font-bold text-slate-900 mb-2">
+                    🎯 Final Internship Project Submission
+                  </h2>
+
+                  <p className="text-sm text-slate-500 mb-4">
+                    Submit your GitHub repository containing the completed project.
+                  </p>
+
+                  <input
+                    type="url"
+                    value={githubRepo}
+                    onChange={(e) => setGithubRepo(e.target.value)}
+                    placeholder="https://github.com/username/project"
+                    className="w-full border border-slate-300 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+
+                  <button
+                    onClick={async () => {
+                      try {
+                        await axios.post('http://localhost:5000/api/internship/submit', {
+                          userId,
+                          courseId: id,
+                          githubRepo
+                        });
+
+                        alert('✅ Internship submitted & approved!');
+                        navigate('/dashboard/profile');
+                      } catch (err) {
+                        alert(err.response?.data?.msg || 'Submission failed');
+                      }
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold"
+                  >
+                    Submit GitHub Repository
+                  </button>
+                </div>
+              )}
+
+
             </div>
           </div>
         </div>

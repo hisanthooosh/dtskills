@@ -32,18 +32,17 @@ app.use('/api/college', collegeRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/submissions', submissionRoutes);
+app.use('/api/internship', require('./routes/internship'));
+app.use('/api/documents', require('./routes/documents'));
+app.use('/api/certificates', require('./routes/certificates'));
+
+
+
+
 
 // --- PUBLIC DATA ROUTES ---
 
-// Get All Courses (Catalog)
-app.get('/api/courses', async (req, res) => {
-  try {
-    const courses = await Course.find();
-    res.json(courses);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+
 
 // Seed Dummy Courses (UPDATED: Uses correct 'modules' structure)
 app.get('/api/seed', async (req, res) => {

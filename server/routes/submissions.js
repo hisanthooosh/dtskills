@@ -1,50 +1,79 @@
 const express = require('express');
 const router = express.Router();
-const Submission = require('../models/Submission');
+const User = require('../models/User');
 
-// 1. Get all submissions
-router.get('/', async (req, res) => {
-  try {
-    const submissions = await Submission.find().sort({ createdAt: -1 });
-    res.json(submissions);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+/**
+ * =====================================================
+ * SUBMIT INTERNSHIP GITHUB REPOSITORY (AUTO APPROVAL)
+ * =====================================================
+ */
+router.post('/submit', async (req, res) => {
+  const { userId, courseId, githubRepo } = req.body;
+
+  // 🔒 Basic validation
+  if (!userId || !courseId || !githubRepo) {
+    return res.status(400).json({ message: 'Missing required data' });
   }
-});
 
-// 2. Approve Submission
-router.put('/:id/approve', async (req, res) => {
-  try {
-    const submission = await Submission.findById(req.params.id);
-    if (!submission) return res.status(404).json({ message: 'Submission not found' });
-
-    submission.status = 'Approved';
-    await submission.save();
-
-    console.log(`Certificate generated for ${submission.studentName}`);
-
-    res.json({ message: 'Approved and certificate generation triggered', submission });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  // 🔒 GitHub URL validation (simple & safe)
+  if (!githubRepo.startsWith('https://github.com/')) {
+    return res.status(400).json({ message: 'Invalid GitHub repository URL' });
   }
-});
 
-// 3. Reject Submission
-router.put('/:id/reject', async (req, res) => {
-  const { feedback } = req.body;
   try {
-    const submission = await Submission.findById(req.params.id);
-    if (!submission) return res.status(404).json({ message: 'Submission not found' });
+    const user = await User.findById(userId).populate('enrolledCourses.courseId');
 
-    submission.status = 'Rejected';
-    submission.feedback = feedback;
-    await submission.save();
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
-    console.log(`Rejection email sent to student with feedback: ${feedback}`);
+    const enrollment = user.enrolledCourses.find(
+      e => e.courseId && e.courseId._id.toString() === courseId.toString()
+    );
 
-    res.json({ message: 'Submission rejected and feedback recorded', submission });
+    if (!enrollment) {
+      return res.status(404).json({ message: 'Enrollment not found' });
+    }
+
+    // 🔒 Internship must be unlocked first
+    if (!enrollment.internshipUnlocked) {
+      return res.status(403).json({
+        message: 'Internship not unlocked yet'
+      });
+    }
+
+    // 🔒 Prevent duplicate submission
+    if (enrollment.internshipGithubRepo) {
+      return res.status(409).json({
+        message: 'GitHub repository already submitted'
+      });
+    }
+
+    // =====================================================
+    // ✅ AUTO APPROVAL LOGIC
+    // =====================================================
+
+    enrollment.internshipGithubRepo = githubRepo;
+    enrollment.internshipSubmittedAt = new Date();
+
+    // ✅ AUTO MARK COMPLETED
+    enrollment.internshipCompleted = true;
+
+    // ✅ AUTO ISSUE INTERNSHIP CERTIFICATE
+    enrollment.internshipCertificateIssued = true;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Internship project submitted & approved automatically',
+      internshipCompleted: true,
+      internshipCertificateIssued: true
+    });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Internship Submission Error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

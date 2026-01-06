@@ -90,15 +90,25 @@ router.post('/complete-topic', async (req, res) => {
       totalCourseTopics += module.topics.length;
     });
 
-    // ✅ Auto-complete course
+    // Count ONLY completed topics from modules 1–5
+    const completedCourseTopics = enrollment.completedTopics.filter(topicId => {
+      return course.modules
+        .slice(0, 5)
+        .some(module =>
+          module.topics.some(t => t._id.toString() === topicId)
+        );
+    });
+
     if (
-      enrollment.completedTopics.length >= totalCourseTopics &&
+      completedCourseTopics.length >= totalCourseTopics &&
       !enrollment.courseCompleted
     ) {
       enrollment.courseCompleted = true;
       enrollment.courseCertificateIssued = true;
-      enrollment.internshipUnlocked = true; // optional
+      enrollment.offerLetterIssued = true;
+      enrollment.internshipUnlocked = true;
     }
+
 
     await user.save();
 

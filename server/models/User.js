@@ -12,6 +12,7 @@ const EnrolledCourseSchema = new mongoose.Schema({
     default: []
   },
 
+  // ===== COURSE PHASE (Modules 1–5) =====
   courseCompleted: {
     type: Boolean,
     default: false
@@ -22,12 +23,33 @@ const EnrolledCourseSchema = new mongoose.Schema({
     default: false
   },
 
+  offerLetterIssued: {
+    type: Boolean,
+    default: false
+  },
+
+  // ===== INTERNSHIP PHASE (Modules 6–10) =====
   internshipUnlocked: {
     type: Boolean,
     default: false
   },
 
-  isPaid: {
+  internshipGithubRepo: {
+    type: String,
+    default: null
+  },
+
+  internshipSubmittedAt: {
+    type: Date,
+    default: null
+  },
+
+  internshipCompleted: {
+    type: Boolean,
+    default: false
+  },
+
+  internshipCertificateIssued: {
     type: Boolean,
     default: false
   },
@@ -40,34 +62,33 @@ const EnrolledCourseSchema = new mongoose.Schema({
 
 const UserSchema = new mongoose.Schema(
   {
-    // --- Auth ---
-    username: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    role: {
+    username: {
       type: String,
-      enum: ['student', 'admin'],
-      default: 'student'
+      required: true
     },
 
-    // --- Face Auth ---
-    faceDescriptor: { type: Array, default: [] },
+    email: {
+      type: String,
+      unique: true,
+      required: true
+    },
 
-    // --- Student Info ---
-    name: String,
-    rollNumber: String,
-    collegeName: String,
+    password: {
+      type: String,
+      required: true
+    },
+
+    role: {
+      type: String,
+      default: 'student'
+    },
 
     collegeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'College'
     },
 
-    // ✅ CORRECT STRUCTURE
-    enrolledCourses: {
-      type: [EnrolledCourseSchema],
-      default: []
-    }
+    enrolledCourses: [EnrolledCourseSchema]
   },
   { timestamps: true }
 );
