@@ -2,6 +2,18 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Course = require('../models/Course'); // Needed for population
+// 🔒 ADMIN: Get all students
+router.get('/', async (req, res) => {
+  try {
+    const students = await User.find({ role: 'student' })
+      .select('-password')
+      .populate('enrolledCourses.courseId');
+
+    res.json(students);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET Student Profile with Enrolled Courses Populated
 router.get('/:id', async (req, res) => {

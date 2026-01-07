@@ -1,22 +1,19 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import adminAxios from '../utils/adminAxios';
 
 export default function AdminManageAdmins() {
   const [admins, setAdmins] = useState([]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const adminToken = localStorage.getItem('adminToken');
 
   const fetchAdmins = async () => {
-    const res = await axios.get(
-      'http://localhost:5000/api/admin-manage/course-admins',
-      {
-        headers: {
-          Authorization: adminToken   // ✅ FIXED
-        }
-      }
-    );
-    setAdmins(res.data);
+    try {
+      const res = await adminAxios.get('/admin-manage/course-admins');
+      setAdmins(res.data);
+    } catch (err) {
+      console.error(err);
+      alert('Unauthorized or session expired');
+    }
   };
 
   useEffect(() => {
@@ -29,32 +26,27 @@ export default function AdminManageAdmins() {
       return;
     }
 
-    await axios.post(
-      'http://localhost:5000/api/admin-manage/create-course-admin',
-      { email, password },
-      {
-        headers: {
-          Authorization: adminToken   // ✅ FIXED
-        }
-      }
-    );
+    try {
+      await adminAxios.post('/admin-manage/create-course-admin', {
+        email,
+        password
+      });
 
-    setEmail('');
-    setPassword('');
-    fetchAdmins();
+      setEmail('');
+      setPassword('');
+      fetchAdmins();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error creating admin');
+    }
   };
 
   const toggleAdmin = async (id) => {
-    await axios.put(
-      `http://localhost:5000/api/admin-manage/toggle-course-admin/${id}`,
-      {},
-      {
-        headers: {
-          Authorization: adminToken   // ✅ FIXED
-        }
-      }
-    );
-    fetchAdmins();
+    try {
+      await adminAxios.put(`/admin-manage/toggle-course-admin/${id}`);
+      fetchAdmins();
+    } catch (err) {
+      alert('Error updating admin');
+    }
   };
 
   return (

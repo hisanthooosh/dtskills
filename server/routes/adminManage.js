@@ -1,91 +1,72 @@
 const express = require('express');
 const router = express.Router();
+
 const Admin = require('../models/Admin');
 const adminAuth = require('../middleware/adminAuth');
-const requireRole = require('../middleware/adminRole');
+const adminRole = require('../middleware/adminRole');
 
+/**
+ * 🔐 SUPER ADMIN ONLY ROUTES
+ */
 
-// CREATE COURSE ADMIN (SUPER ADMIN ONLY)
-router.post('/create-course-admin', async (req, res) => {
-  const { email, password, adminToken } = req.body;
-
-  // 🔐 SUPER ADMIN CHECK
-  if (adminToken !== 'SUPER_ADMIN_STATIC_TOKEN') {
-    return res.status(403).json({ message: 'Unauthorized' });
+// ✅ GET ALL COURSE ADMINS
+router.get(
+  '/course-admins',
+  adminAuth,
+  adminRole('super_admin'),
+  async (req, res) => {
+    const admins = await Admin.find({ role: 'course_admin' });
+    res.json(admins);
   }
+);
 
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Missing data' });
-  }
+// ✅ CREATE COURSE ADMIN
+router.post(
+  '/create-course-admin',
+  adminAuth,
+  adminRole('super_admin'),
+  async (req, res) => {
+    const { email, password } = req.body;
 
-  try {
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email & password required' });
+    }
+
     const exists = await Admin.findOne({ email });
     if (exists) {
-      return res.status(409).json({ message: 'Admin already exists' });
+      return res.status(400).json({ error: 'Admin already exists' });
     }
 
     const admin = new Admin({
       email,
       password,
-      role: 'course_admin'
+      role: 'course_admin',
+      isActive: true
     });
 
     await admin.save();
 
-    res.json({
-      success: true,
-      message: 'Course admin created successfully',
-      admin: {
-        email: admin.email,
-        role: admin.role
-      }
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// =====================================================
-// GET ALL COURSE ADMINS (SUPER ADMIN ONLY)
-// =====================================================
-router.get(
-  '/course-admins',
-  adminAuth,
-  requireRole(['super_admin']),
-  async (req, res) => {
-    try {
-      const admins = await Admin.find({ role: 'course_admin' }).select('-password');
-      res.json(admins);
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
+    res.json({ message: 'Course admin created successfully' });
   }
 );
 
-// =====================================================
-// ENABLE / DISABLE COURSE ADMIN
-// =====================================================
+// ✅ ENABLE / DISABLE COURSE ADMIN
 router.put(
   '/toggle-course-admin/:id',
   adminAuth,
-  requireRole(['super_admin']),
+  adminRole('super_admin'),
   async (req, res) => {
-    try {
-      const admin = await Admin.findById(req.params.id);
-      if (!admin) return res.status(404).json({ message: 'Admin not found' });
+    const admin = await Admin.findById(req.params.id);
 
-      admin.isActive = !admin.isActive;
-      await admin.save();
-
-      res.json({
-        success: true,
-        isActive: admin.isActive
-      });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin not found' });
     }
+
+    admin.isActive = !admin.isActive;
+    await admin.save();
+
+    res.json({ message: 'Admin status updated' });
   }
 );
-
 
 module.exports = router;

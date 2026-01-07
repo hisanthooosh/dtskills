@@ -8,172 +8,108 @@ const User = require('./models/User');
 const Course = require('./models/Course');
 
 // --- IMPORT ROUTES ---
-const submissionRoutes = require('./routes/submissions.js');
 const authRoutes = require('./routes/auth');
 const collegeRoutes = require('./routes/college');
 const courseRoutes = require('./routes/course');
 const studentRoutes = require('./routes/student');
+const submissionRoutes = require('./routes/submissions');
 const adminAuthRoutes = require('./routes/adminAuth');
+const adminManageRoutes = require('./routes/adminManage');
+const internshipRoutes = require('./routes/internship');
+const documentRoutes = require('./routes/documents');
+const certificateRoutes = require('./routes/certificates');
 
-// ✅ AUTH MIDDLEWARE (DO NOT REMOVE)
+// --- AUTH MIDDLEWARE ---
 const adminAuth = require('./middleware/adminAuth');
 const requireRole = require('./middleware/adminRole');
 
 const app = express();
 
-// --- MIDDLEWARE ---
+// --- GLOBAL MIDDLEWARE ---
 app.use(express.json());
 app.use(cors());
 
 // --- DATABASE CONNECTION ---
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.log("❌ DB Error:", err));
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log('✅ MongoDB Connected'))
+  .catch(err => console.error('❌ MongoDB Error:', err));
 
-// --- MOUNT MODULAR ROUTES ---
+// --- ROUTE MOUNTS ---
 app.use('/api/auth', authRoutes);
-app.use('/api/college', collegeRoutes);       // 🔒 PROTECTED INSIDE FILE
+app.use('/api/admin-auth', adminAuthRoutes);
+app.use('/api/admin-manage', adminManageRoutes);
+
+app.use('/api/college', collegeRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/student', studentRoutes);
-app.use('/api/submissions', submissionRoutes); // 🔒 PROTECTED INSIDE FILE
-app.use('/api/internship', require('./routes/internship'));
-app.use('/api/documents', require('./routes/documents'));
-app.use('/api/certificates', require('./routes/certificates'));
-app.use('/api/admin-auth', adminAuthRoutes);
-app.use('/api/admin-manage', require('./routes/adminManage'));
+app.use('/api/submissions', submissionRoutes);
+app.use('/api/internship', internshipRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/certificates', certificateRoutes);
 
-// --- PUBLIC DATA ROUTES ---
+// --- SUPER ADMIN ROUTE: GET ALL STUDENTS ---
+app.get(
+  '/api/admin/students',
+  adminAuth,
+  requireRole(['super_admin']),
+  async (req, res) => {
+    try {
+      const students = await User.find({ role: 'student' })
+        .select('-password')
+        .populate('enrolledCourses.courseId');
 
-// Seed Dummy Courses
+      res.json(students);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// --- SEED ROUTE (OPTIONAL / DEV ONLY) ---
 app.get('/api/seed', async (req, res) => {
   try {
     await Course.deleteMany({});
 
     await Course.create([
       {
-        title: "MERN Stack Internship",
-        description: "Full Stack Web Development with React & Node.",
-        thumbnail: "https://via.placeholder.com/150",
-        price: 0,
-        modules: [
-          {
-            title: "Introduction",
-            topics: [
-              {
-                title: "Welcome to MERN",
-                textContent:
-                  "The MERN stack consists of MongoDB, Express, React, and Node.js.",
-                youtubeLinks: [
-                  {
-                    title: "MERN Stack in 100 Seconds",
-                    url: "https://www.youtube.com/watch?v=98BzS5Oz5E4"
-                  }
-                ],
-                quiz: [
-                  {
-                    question: "What does the 'R' stand for in MERN?",
-                    options: ["Ruby", "React", "Rust", "Redis"],
-                    correctAnswer: 1
-                  }
-                ]
-              }
-            ]
-          }
-        ]
+        title: 'MERN Stack Internship',
+        description: 'Full Stack Web Development with React & Node.',
+        thumbnail: 'https://via.placeholder.com/150',
+        price: 200,
+        modules: []
       },
       {
-        title: "Python AI/ML Internship",
-        description: "Learn Machine Learning basics.",
-        thumbnail: "https://via.placeholder.com/150",
-        price: 0,
-        modules: [
-          {
-            title: "Intro to AI",
-            topics: [
-              {
-                title: "What is AI?",
-                textContent:
-                  "Artificial Intelligence refers to the simulation of human intelligence in machines.",
-                youtubeLinks: [],
-                quiz: []
-              }
-            ]
-          }
-        ]
+        title: 'Python AI/ML Internship',
+        description: 'Learn Machine Learning basics.',
+        thumbnail: 'https://via.placeholder.com/150',
+        price: 200,
+        modules: []
       }
     ]);
 
-    res.json({ message: "✅ Database Seeded Successfully!" });
+    res.json({ message: '✅ Database Seeded Successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// --- STUDENT ROUTES ---
-
-app.get('/api/student/:id', async (req, res) => {
-  try {
-    const student = await User.findById(req.params.id)
-      .populate('enrolledCourses.courseId');
-    res.json(student);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/student/enroll', async (req, res) => {
-  const { studentId, courseId } = req.body;
-
-  try {
-    const student = await User.findById(studentId);
-    if (!student)
-      return res.status(404).json({ message: "Student not found" });
-
-    const isEnrolled = student.enrolledCourses.find(
-      c => c.courseId.toString() === courseId
-    );
-    if (isEnrolled)
-      return res.json({ message: "Already enrolled" });
-
-    student.enrolledCourses.push({ courseId });
-    await student.save();
-
-    res.json(student);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// --- ADMIN ROUTES ---
-
-// 🔒 SUPER ADMIN ONLY
-app.post(
-  '/api/admin/students',
-  adminAuth,
-  requireRole(['super_admin']),
-  async (req, res) => {
-    const students = await User.find({ role: 'student' })
-      .select('-password');
-    res.json(students);
-  }
-);
-
-// --- DB FIX ROUTE (SAFE) ---
+// --- SAFE DB RESET (OPTIONAL) ---
 app.get('/api/reset-colleges', async (req, res) => {
   try {
     await mongoose.connection.collection('colleges').drop();
-    res.send("✅ Colleges collection reset successfully");
+    res.send('✅ Colleges collection reset successfully');
   } catch (err) {
     if (err.code === 26) {
-      res.send("✅ No collection found. Nothing to reset.");
+      res.send('✅ No colleges collection found');
     } else {
-      res.status(500).send("Error: " + err.message);
+      res.status(500).send(err.message);
     }
   }
 });
 
 // --- SERVER START ---
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () =>
-  console.log(`🚀 Server running on Port ${PORT}`)
-);
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

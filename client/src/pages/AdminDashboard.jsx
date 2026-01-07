@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from 'axios';          // ✅ KEEP (for public routes)
+import adminAxios from '../utils/adminAxios'; // ✅ KEEP (for admin routes)
+
+
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -71,7 +74,7 @@ export default function AdminDashboard() {
     const [editingId, setEditingId] = useState(null); // Track if editing a draft
 
     // Admin Secret
-    const ADMIN_SECRET = "doneswari_admin_2025";
+
 
     // --- BUILDER STATE ---
     // FIX: Changed 'chapters' to 'modules' to match backend
@@ -122,33 +125,27 @@ export default function AdminDashboard() {
 
     const fetchData = async () => {
         try {
-            // 1. Get Courses
+            // 1️⃣ Get Courses (public)
             const courseRes = await axios.get('http://localhost:5000/api/courses');
             setCourses(courseRes.data);
 
-            const token = localStorage.getItem('adminToken');
-
-            const studentRes = await axios.post(
-                'http://localhost:5000/api/admin/students',
-                { adminSecret: ADMIN_SECRET },
-                {
-                    headers: {
-                        Authorization: token
-                    }
-                }
-            );
+            // 2️⃣ Get Students (ADMIN – uses token automatically)
+            const studentRes = await adminAxios.get('/student');
 
             setStudents(studentRes.data);
+
             setLoading(false);
         } catch (err) {
-            console.error("Error loading admin data");
+            console.error("Error loading admin data", err);
         }
     };
+
 
     // --- ACTIONS ---
     const handleDeleteCourse = async (id) => {
         if (!confirm("Delete this course permanently?")) return;
-        await axios.delete(`http://localhost:5000/api/admin/course/${id}`, { data: { adminSecret: ADMIN_SECRET } });
+        await adminAxios.delete(`/admin/course/${id}`);
+
         fetchData();
     };
     const handleContinueEditing = (course) => {
@@ -208,12 +205,12 @@ export default function AdminDashboard() {
 
     const handleSaveCourse = async (isPublished) => {
         try {
-            await axios.post('http://localhost:5000/api/courses/publish', {
+            await adminAxios.post('/courses/publish', {
                 ...courseData,
-                _id: editingId, // Send ID if we are editing
-                isPublished: isPublished, // True = Live, False = Draft
-                adminSecret: ADMIN_SECRET
+                _id: editingId,
+                isPublished: isPublished
             });
+
 
             if (isPublished) {
                 alert("Course Published Live to Students!");
@@ -385,7 +382,7 @@ export default function AdminDashboard() {
     // Fetch Submissions when tab changes
     useEffect(() => {
         if (activeTab === 'submissions') {
-            axios.get('http://localhost:5000/api/submissions')
+            adminAxios.get('/submissions')
                 .then(res => setSubmissions(res.data))
                 .catch(err => console.error(err));
         }
@@ -393,22 +390,29 @@ export default function AdminDashboard() {
 
     const handleApprove = async (id) => {
         try {
-            await axios.put(`http://localhost:5000/api/submissions/${id}/approve`);
+            await adminAxios.put(`/submissions/${id}/approve`);
             alert("Approved!");
-            // Refresh list
-            const res = await axios.get('http://localhost:5000/api/submissions');
+            const res = await adminAxios.get('/submissions');
             setSubmissions(res.data);
-        } catch (error) { alert("Error approving"); }
+        } catch (error) {
+            alert("Error approving");
+        }
     };
+
 
     const submitRejection = async () => {
         try {
-            await axios.put(`http://localhost:5000/api/submissions/${rejectModal.id}/reject`, { feedback });
+            await adminAxios.put(
+                `/submissions/${rejectModal.id}/reject`,
+                { feedback }
+            );
+
             setRejectModal({ isOpen: false, id: null });
             setFeedback('');
             alert("Rejected.");
             // Refresh list
-            const res = await axios.get('http://localhost:5000/api/submissions');
+            const res = await adminAxios.get('/submissions');
+
             setSubmissions(res.data);
         } catch (error) { alert("Error rejecting"); }
     };
@@ -478,7 +482,8 @@ export default function AdminDashboard() {
 
                     <button
                         onClick={() => {
-                            localStorage.removeItem('adminAuth');
+                            localStorage.clear();
+
                             window.location.href = '/admin-login';
                         }}
                         className="bg-red-600 text-white px-4 py-2 rounded"
