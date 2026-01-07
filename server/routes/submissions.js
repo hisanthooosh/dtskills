@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const adminAuth = require('../middleware/adminAuth');
+const requireRole = require('../middleware/adminRole');
 
 /**
  * =====================================================
@@ -15,13 +17,14 @@ router.post('/submit', async (req, res) => {
     return res.status(400).json({ message: 'Missing required data' });
   }
 
-  // 🔒 GitHub URL validation (simple & safe)
+  // 🔒 GitHub URL validation
   if (!githubRepo.startsWith('https://github.com/')) {
     return res.status(400).json({ message: 'Invalid GitHub repository URL' });
   }
 
   try {
-    const user = await User.findById(userId).populate('enrolledCourses.courseId');
+    const user = await User.findById(userId)
+      .populate('enrolledCourses.courseId');
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -35,7 +38,7 @@ router.post('/submit', async (req, res) => {
       return res.status(404).json({ message: 'Enrollment not found' });
     }
 
-    // 🔒 Internship must be unlocked first
+    // 🔒 Internship must be unlocked
     if (!enrollment.internshipUnlocked) {
       return res.status(403).json({
         message: 'Internship not unlocked yet'
@@ -56,11 +59,16 @@ router.post('/submit', async (req, res) => {
     enrollment.internshipGithubRepo = githubRepo;
     enrollment.internshipSubmittedAt = new Date();
 
-    // ✅ AUTO MARK COMPLETED
+    // ✅ AUTO COMPLETE INTERNSHIP
     enrollment.internshipCompleted = true;
 
     // ✅ AUTO ISSUE INTERNSHIP CERTIFICATE
     enrollment.internshipCertificateIssued = true;
+
+    // ✅ ENSURE OFFER LETTER (ONLY IF COURSE COMPLETED)
+    if (enrollment.courseCompleted && !enrollment.offerLetterIssued) {
+      enrollment.offerLetterIssued = true;
+    }
 
     await user.save();
 
@@ -68,7 +76,8 @@ router.post('/submit', async (req, res) => {
       success: true,
       message: 'Internship project submitted & approved automatically',
       internshipCompleted: true,
-      internshipCertificateIssued: true
+      internshipCertificateIssued: true,
+      offerLetterIssued: enrollment.offerLetterIssued
     });
 
   } catch (error) {

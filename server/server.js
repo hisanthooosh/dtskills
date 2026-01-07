@@ -7,15 +7,17 @@ const cors = require('cors');
 const User = require('./models/User');
 const Course = require('./models/Course');
 
-const submissionRoutes = require('./routes/submissions.js'); // ✅ USE THIS
-
 // --- IMPORT ROUTES ---
+const submissionRoutes = require('./routes/submissions.js');
 const authRoutes = require('./routes/auth');
 const collegeRoutes = require('./routes/college');
-const courseRoutes = require('./routes/course'); // Fixed typo here
-const studentRoutes = require('./routes/student'); // <--- 1. ADD THIS IMPORT
+const courseRoutes = require('./routes/course');
+const studentRoutes = require('./routes/student');
 const adminAuthRoutes = require('./routes/adminAuth');
 
+// ✅ AUTH MIDDLEWARE (DO NOT REMOVE)
+const adminAuth = require('./middleware/adminAuth');
+const requireRole = require('./middleware/adminRole');
 
 const app = express();
 
@@ -30,45 +32,42 @@ mongoose.connect(process.env.MONGO_URI)
 
 // --- MOUNT MODULAR ROUTES ---
 app.use('/api/auth', authRoutes);
-app.use('/api/college', collegeRoutes);
+app.use('/api/college', collegeRoutes);       // 🔒 PROTECTED INSIDE FILE
 app.use('/api/courses', courseRoutes);
 app.use('/api/student', studentRoutes);
-app.use('/api/submissions', submissionRoutes);
+app.use('/api/submissions', submissionRoutes); // 🔒 PROTECTED INSIDE FILE
 app.use('/api/internship', require('./routes/internship'));
 app.use('/api/documents', require('./routes/documents'));
 app.use('/api/certificates', require('./routes/certificates'));
 app.use('/api/admin-auth', adminAuthRoutes);
 app.use('/api/admin-manage', require('./routes/adminManage'));
 
-
-
-
-
-
 // --- PUBLIC DATA ROUTES ---
 
-
-
-// Seed Dummy Courses (UPDATED: Uses correct 'modules' structure)
+// Seed Dummy Courses
 app.get('/api/seed', async (req, res) => {
   try {
     await Course.deleteMany({});
-    
+
     await Course.create([
-      { 
-        title: "MERN Stack Internship", 
+      {
+        title: "MERN Stack Internship",
         description: "Full Stack Web Development with React & Node.",
         thumbnail: "https://via.placeholder.com/150",
         price: 0,
         modules: [
-          { 
-            title: "Introduction", 
+          {
+            title: "Introduction",
             topics: [
-              { 
-                title: "Welcome to MERN", 
-                textContent: "The MERN stack consists of MongoDB, Express, React, and Node.js. It is one of the most popular stacks for building full-stack web applications.",
+              {
+                title: "Welcome to MERN",
+                textContent:
+                  "The MERN stack consists of MongoDB, Express, React, and Node.js.",
                 youtubeLinks: [
-                  { title: "MERN Stack in 100 Seconds", url: "https://www.youtube.com/watch?v=98BzS5Oz5E4" }
+                  {
+                    title: "MERN Stack in 100 Seconds",
+                    url: "https://www.youtube.com/watch?v=98BzS5Oz5E4"
+                  }
                 ],
                 quiz: [
                   {
@@ -78,31 +77,33 @@ app.get('/api/seed', async (req, res) => {
                   }
                 ]
               }
-            ] 
+            ]
           }
-        ] 
+        ]
       },
-      { 
-        title: "Python AI/ML Internship", 
+      {
+        title: "Python AI/ML Internship",
         description: "Learn Machine Learning basics.",
         thumbnail: "https://via.placeholder.com/150",
         price: 0,
         modules: [
-          { 
-            title: "Intro to AI", 
+          {
+            title: "Intro to AI",
             topics: [
-              { 
-                title: "What is AI?", 
-                textContent: "Artificial Intelligence (AI) refers to the simulation of human intelligence in machines.",
+              {
+                title: "What is AI?",
+                textContent:
+                  "Artificial Intelligence refers to the simulation of human intelligence in machines.",
                 youtubeLinks: [],
                 quiz: []
               }
-            ] 
+            ]
           }
-        ] 
+        ]
       }
     ]);
-    res.json({ message: "✅ Database Seeded Successfully with Correct Data!" });
+
+    res.json({ message: "✅ Database Seeded Successfully!" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -110,31 +111,33 @@ app.get('/api/seed', async (req, res) => {
 
 // --- STUDENT ROUTES ---
 
-// Get My Profile (With Enrolled Courses)
 app.get('/api/student/:id', async (req, res) => {
   try {
-    const student = await User.findById(req.params.id).populate('enrolledCourses.courseId');
+    const student = await User.findById(req.params.id)
+      .populate('enrolledCourses.courseId');
     res.json(student);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Enroll in a Course
 app.post('/api/student/enroll', async (req, res) => {
   const { studentId, courseId } = req.body;
-  
+
   try {
     const student = await User.findById(studentId);
-    if (!student) return res.status(404).json({ message: "Student not found" });
+    if (!student)
+      return res.status(404).json({ message: "Student not found" });
 
-    // Check if already enrolled
-    const isEnrolled = student.enrolledCourses.find(c => c.courseId.toString() === courseId);
-    if (isEnrolled) return res.json({ message: "Already enrolled" });
+    const isEnrolled = student.enrolledCourses.find(
+      c => c.courseId.toString() === courseId
+    );
+    if (isEnrolled)
+      return res.json({ message: "Already enrolled" });
 
     student.enrolledCourses.push({ courseId });
     await student.save();
-    
+
     res.json(student);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -143,65 +146,34 @@ app.post('/api/student/enroll', async (req, res) => {
 
 // --- ADMIN ROUTES ---
 
-// 1. Create a New Course
-app.post('/api/admin/course', async (req, res) => {
-  const { title, description, price, modules, adminSecret } = req.body;
-  
-  if (adminSecret !== "doneswari_admin_2025") {
-    return res.status(403).json({ message: "Unauthorized: Wrong Secret Key" });
+// 🔒 SUPER ADMIN ONLY
+app.post(
+  '/api/admin/students',
+  adminAuth,
+  requireRole(['super_admin']),
+  async (req, res) => {
+    const students = await User.find({ role: 'student' })
+      .select('-password');
+    res.json(students);
   }
+);
 
-  const newCourse = await Course.create({
-    title,
-    description,
-    price,
-    modules
-  });
-
-  res.json(newCourse);
-});
-
-// 2. Delete a Course
-app.delete('/api/admin/course/:id', async (req, res) => {
-  const { adminSecret } = req.body;
-  if (adminSecret !== "doneswari_admin_2025") return res.status(403).json({ message: "Unauthorized" });
-  
-  await Course.findByIdAndDelete(req.params.id);
-  res.json({ message: "Course Deleted" });
-});
-
-// 3. Get All Students
-app.post('/api/admin/students', async (req, res) => {
-  const { adminSecret } = req.body;
-  if (adminSecret !== "doneswari_admin_2025") return res.status(403).json({ message: "Unauthorized" });
-
-  const students = await User.find({ role: 'student' }).select('-password');
-  res.json(students);
-});
-// =============================================================
-// 👇 PASTE THIS BLOCK AT THE BOTTOM OF SERVER.JS (Before app.listen)
-// =============================================================
-
+// --- DB FIX ROUTE (SAFE) ---
 app.get('/api/reset-colleges', async (req, res) => {
   try {
-    // This forcibly drops the collection to clear the bad "hodEmail" index
     await mongoose.connection.collection('colleges').drop();
-    res.send("✅ SUCCESS: Database Cleaned! Go back to Admin Dashboard and create the College again.");
+    res.send("✅ Colleges collection reset successfully");
   } catch (err) {
     if (err.code === 26) {
-      res.send("✅ Collection was already empty (Nothing to delete). You are good to go!");
+      res.send("✅ No collection found. Nothing to reset.");
     } else {
       res.status(500).send("Error: " + err.message);
     }
   }
 });
 
-// =============================================================
-// 👆 END OF PASTE
-// =============================================================
-
-// const PORT = ... (Your existing code starts here)
-// app.listen(...)
 // --- SERVER START ---
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on Port ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`🚀 Server running on Port ${PORT}`)
+);

@@ -15,24 +15,22 @@ import Profile from './pages/dashboard/Profile';
 import HodLogin from './pages/hod/HodLogin';
 import HodDashboard from './pages/hod/HodDashboard';
 
-
 import AdminProtectedRoute from './routes/AdminProtectedRoute';
 import AdminLogin from './pages/AdminLogin';
 import AdminCourses from './pages/AdminCourses';
-
-
+import AdminManageAdmins from './pages/AdminManageAdmins';
 
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
+        {/* PUBLIC */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Student Dashboard */}
+        {/* STUDENT DASHBOARD */}
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<MyLearning />} />
           <Route path="my-learning" element={<MyLearning />} />
@@ -40,16 +38,18 @@ function App() {
           <Route path="profile" element={<Profile />} />
         </Route>
 
-        {/* Classroom */}
+        {/* CLASSROOM */}
         <Route path="/classroom/:id" element={<Classroom />} />
 
         {/* HOD */}
         <Route path="/hod-login" element={<HodLogin />} />
         <Route path="/hod-dashboard" element={<HodDashboard />} />
 
-        {/* ADMIN */}
+        {/* ADMIN LOGIN (CRITICAL FIX) */}
+        <Route path="/admin" element={<AdminLogin />} />
         <Route path="/admin-login" element={<AdminLogin />} />
 
+        {/* SUPER ADMIN */}
         <Route
           path="/admin/dashboard"
           element={
@@ -58,7 +58,17 @@ function App() {
             </AdminProtectedRoute>
           }
         />
+        <Route
+          path="/admin/manage-admins"
+          element={
+            <AdminProtectedRoute allowedRole="super_admin">
+              <AdminManageAdmins />
+            </AdminProtectedRoute>
+          }
+        />
 
+
+        {/* COURSE ADMIN */}
         <Route
           path="/admin/courses"
           element={
@@ -67,9 +77,7 @@ function App() {
             </AdminProtectedRoute>
           }
         />
-
       </Routes>
-
     </Router>
   );
 }

@@ -1,29 +1,53 @@
 const express = require('express');
 const router = express.Router();
+const Admin = require('../models/Admin');
 
-// ✅ HARD CODED SUPER ADMIN (FOR MVP)
-const SUPER_ADMIN_EMAIL = "hisanthoosh30@gmail.com";
-const SUPER_ADMIN_PASSWORD = "Hisanthu30@MBU";
+// HARD CODED SUPER ADMIN
+const ADMIN_EMAIL = "hisanthoosh30@gmail.com";
+const ADMIN_PASSWORD = "Hisanthu30@MBU";
 
-// ADMIN LOGIN
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
-  // ✅ SUPER ADMIN LOGIN
-  if (email === SUPER_ADMIN_EMAIL && password === SUPER_ADMIN_PASSWORD) {
+  // SUPER ADMIN LOGIN
+  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+
+    // 🔥 ENSURE SUPER ADMIN EXISTS IN DB
+    let admin = await Admin.findOne({ email });
+
+    if (!admin) {
+      admin = await Admin.create({
+        email,
+        password,
+        role: 'super_admin',
+        isActive: true,
+        token: 'SUPER_ADMIN_TOKEN'
+      });
+    }
+
     return res.json({
       success: true,
       admin: {
-        email,
-        role: 'super_admin'
+        email: admin.email,
+        role: admin.role
       },
-      token: 'SUPER_ADMIN_STATIC_TOKEN'
+      token: admin.token
     });
   }
 
-  return res.status(401).json({
-    success: false,
-    message: 'Invalid admin credentials'
+  // COURSE ADMIN LOGIN
+  const admin = await Admin.findOne({ email, password, isActive: true });
+  if (!admin) {
+    return res.status(401).json({ message: 'Invalid admin credentials' });
+  }
+
+  return res.json({
+    success: true,
+    admin: {
+      email: admin.email,
+      role: admin.role
+    },
+    token: admin.token
   });
 });
 

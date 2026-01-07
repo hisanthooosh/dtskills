@@ -30,6 +30,8 @@ export default function AdminDashboard() {
     const [courses, setCourses] = useState([]);
     const [students, setStudents] = useState([]);
     // ---------------- REVENUE CALCULATIONS ----------------
+    const [adminRole, setAdminRole] = useState(null);
+
 
     // Total paid enrollments
     const paidEnrollments = students.flatMap(s =>
@@ -102,11 +104,16 @@ export default function AdminDashboard() {
         setPreviewStep('reading');
     };
     useEffect(() => {
-        const admin = localStorage.getItem('admin');
-        if (!admin) {
+        const adminData = JSON.parse(localStorage.getItem('admin'));
+
+        if (!adminData) {
             window.location.href = '/admin';
+            return;
         }
+
+        setAdminRole(adminData.role);
     }, []);
+
 
 
     useEffect(() => {
@@ -119,10 +126,18 @@ export default function AdminDashboard() {
             const courseRes = await axios.get('http://localhost:5000/api/courses');
             setCourses(courseRes.data);
 
-            // 2. Get Students (Secure Route)
-            const studentRes = await axios.post('http://localhost:5000/api/admin/students', {
-                adminSecret: ADMIN_SECRET
-            });
+            const token = localStorage.getItem('adminToken');
+
+            const studentRes = await axios.post(
+                'http://localhost:5000/api/admin/students',
+                { adminSecret: ADMIN_SECRET },
+                {
+                    headers: {
+                        Authorization: token
+                    }
+                }
+            );
+
             setStudents(studentRes.data);
             setLoading(false);
         } catch (err) {
@@ -410,30 +425,53 @@ export default function AdminDashboard() {
                 </div>
 
                 <nav className="flex-1 p-4 space-y-2">
-                    <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-3 p-3 rounded-lg transition ${activeTab === 'overview' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                        <LayoutDashboard size={20} /> Overview
-                    </button>
-                    <button onClick={() => setActiveTab('students')} className={`w-full flex items-center gap-3 p-3 rounded-lg transition ${activeTab === 'students' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                        <Users size={20} /> Students List
-                    </button>
-                    <button onClick={() => setActiveTab('courses')} className={`w-full flex items-center gap-3 p-3 rounded-lg transition ${activeTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                        <BookOpen size={20} /> Manage Courses
-                    </button>
-                    <button onClick={() => setActiveTab('create')} className={`w-full flex items-center gap-3 p-3 rounded-lg transition ${activeTab === 'create' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                        <PlusCircle size={20} /> Create New
-                    </button>
-                    <button onClick={() => setActiveTab('colleges')} className={`w-full flex items-center gap-3 p-3 rounded-lg transition ${activeTab === 'colleges' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                        <FolderPlus size={20} /> Manage Colleges
-                    </button>
-                    {/* In your Sidebar */}
-                    <button
-                        onClick={() => setActiveTab('submissions')}
-                        className={`flex items-center space-x-3 w-full p-2 rounded ${activeTab === 'submissions' ? 'bg-blue-50 text-blue-600' : 'text-gray-600'
-                            }`}
-                    >
-                        <FileText size={20} />
-                        <span>Submissions</span>
-                    </button>
+                    {/* SUPER ADMIN SIDEBAR */}
+                    {adminRole === 'super_admin' && (
+                        <>
+                            <button onClick={() => setActiveTab('overview')}
+                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800">
+                                <LayoutDashboard size={20} /> Overview
+                            </button>
+
+                            <button onClick={() => setActiveTab('students')}
+                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800">
+                                <Users size={20} /> Students List
+                            </button>
+
+                            <button onClick={() => setActiveTab('colleges')}
+                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800">
+                                <FolderPlus size={20} /> Manage Colleges
+                            </button>
+
+                            <button onClick={() => setActiveTab('submissions')}
+                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800">
+                                <FileText size={20} /> Submissions
+                            </button>
+                            <button
+                                onClick={() => navigate('/admin/manage-admins')}
+                                className="w-full flex items-center gap-3 p-3 rounded-lg text-slate-400 hover:bg-slate-800"
+                            >
+                                Manage Course Admins
+                            </button>
+
+                        </>
+                    )}
+
+                    {/* COURSE ADMIN SIDEBAR */}
+                    {adminRole === 'course_admin' && (
+                        <>
+                            <button onClick={() => setActiveTab('courses')}
+                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800">
+                                <BookOpen size={20} /> Manage Courses
+                            </button>
+
+                            <button onClick={() => setActiveTab('create')}
+                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800">
+                                <PlusCircle size={20} /> Create Course
+                            </button>
+                        </>
+                    )}
+
                 </nav>
 
                 <div className="p-4 border-t border-slate-800">
@@ -455,7 +493,7 @@ export default function AdminDashboard() {
             <main className="flex-1 overflow-y-auto p-8">
 
                 {/* VIEW 1: OVERVIEW */}
-                {activeTab === 'overview' && (
+                {adminRole === 'super_admin' && activeTab === 'overview' && (
                     <div className="space-y-6">
                         <h2 className="text-2xl font-bold text-slate-800">Dashboard Overview</h2>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -547,7 +585,7 @@ export default function AdminDashboard() {
                 )}
 
                 {/* VIEW 2: STUDENTS LIST */}
-                {activeTab === 'students' && (
+                {adminRole === 'super_admin' && activeTab === 'students' && (
                     <div className="space-y-6">
                         <h2 className="text-2xl font-bold text-slate-800">Enrolled Students</h2>
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -631,7 +669,7 @@ export default function AdminDashboard() {
                 )}
 
                 {/* VIEW 3: MANAGE COURSES */}
-                {activeTab === 'courses' && (
+                {adminRole === 'course_admin' && activeTab === 'courses' && (
                     <div className="space-y-6">
                         <h2 className="text-2xl font-bold text-slate-800">Manage Courses</h2>
                         <div className="grid gap-4">
@@ -666,7 +704,7 @@ export default function AdminDashboard() {
 
 
                 {/* VIEW 4: CREATE COURSE (The Builder) */}
-                {activeTab === 'create' && (
+                {adminRole === 'course_admin' && activeTab === 'create' && (
                     <div className="max-w-4xl">
                         <h2 className="text-2xl font-bold text-slate-800 mb-6">Course Builder</h2>
 
@@ -910,7 +948,7 @@ export default function AdminDashboard() {
                 )}
 
                 {/* VIEW 5: COLLEGE MANAGEMENT */}
-                {activeTab === 'colleges' && (
+                {adminRole === 'super_admin' && activeTab === 'colleges' && (
                     <div className="space-y-6">
                         <h2 className="text-2xl font-bold text-slate-800">College & Batch Management</h2>
 
@@ -1239,7 +1277,7 @@ export default function AdminDashboard() {
                 )}
                 {/* Main Content Area */}
 
-                {activeTab === 'submissions' && (
+                {adminRole === 'super_admin' && activeTab === 'submissions' && (
                     <div className="bg-white rounded-xl shadow-sm overflow-hidden p-6">
                         <h2 className="text-xl font-bold mb-4">Student Submissions</h2>
                         <table className="w-full text-left border-collapse">

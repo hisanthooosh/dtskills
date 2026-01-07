@@ -3,6 +3,10 @@ const router = express.Router();
 const Course = require('../models/Course');
 const User = require('../models/User');
 
+
+const adminAuth = require('../middleware/adminAuth');
+const requireRole = require('../middleware/adminRole');
+
 // --- 1. GET Single Course ---
 router.get('/:id', async (req, res) => {
   try {
@@ -24,31 +28,35 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/publish', async (req, res) => {
-  try {
-    const { _id, title, description, price, modules, isPublished, adminSecret } = req.body;
+router.post(
+  '/publish',
+  adminAuth,
+  requireRole(['super_admin', 'course_admin']),
+  async (req, res) => {
+    try {
+      const { _id, title, description, price, modules, isPublished, adminSecret } = req.body;
 
-    // Security check (Keep your existing check)
-    if (adminSecret !== process.env.ADMIN_SECRET && adminSecret !== "doneswari_admin_2025") {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
+      // Security check (Keep your existing check)
+      if (adminSecret !== process.env.ADMIN_SECRET && adminSecret !== "doneswari_admin_2025") {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
 
-    if (_id) {
-      // IF ID EXISTS -> UPDATE THE DRAFT
-      const updated = await Course.findByIdAndUpdate(_id, {
-        title, description, price, modules, isPublished
-      }, { new: true });
-      return res.json(updated);
-    } else {
-      // IF NO ID -> CREATE NEW COURSE
-      const newCourse = new Course({ title, description, price, modules, isPublished });
-      await newCourse.save();
-      return res.json(newCourse);
+      if (_id) {
+        // IF ID EXISTS -> UPDATE THE DRAFT
+        const updated = await Course.findByIdAndUpdate(_id, {
+          title, description, price, modules, isPublished
+        }, { new: true });
+        return res.json(updated);
+      } else {
+        // IF NO ID -> CREATE NEW COURSE
+        const newCourse = new Course({ title, description, price, modules, isPublished });
+        await newCourse.save();
+        return res.json(newCourse);
+      }
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  });
 
 router.post('/complete-topic', async (req, res) => {
   const { userId, courseId, topicId } = req.body;
