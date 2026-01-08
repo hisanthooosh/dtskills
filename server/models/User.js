@@ -28,6 +28,28 @@ const EnrolledCourseSchema = new mongoose.Schema({
     default: false
   },
 
+  // ===== AICTE INTERNSHIP VERIFICATION =====
+  aicteInternshipId: {
+    type: String,
+    default: null
+  },
+
+  aicteVerified: {
+    type: Boolean,
+    default: false
+  },
+
+  internshipVerifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin',
+    default: null
+  },
+
+  internshipVerifiedAt: {
+    type: Date,
+    default: null
+  },
+
   // ===== INTERNSHIP PHASE (Modules 6–10) =====
   internshipUnlocked: {
     type: Boolean,

@@ -32,6 +32,14 @@ export default function AdminDashboard() {
 
     const [courses, setCourses] = useState([]);
     const [students, setStudents] = useState([]);
+    // 🔶 AICTE Internship IDs
+    const [aicteList, setAicteList] = useState([]);
+    const [aicteForm, setAicteForm] = useState({
+        email: '',
+        courseId: '',
+        aicteInternshipId: ''
+    });
+
     // ---------------- REVENUE CALCULATIONS ----------------
     const [adminRole, setAdminRole] = useState(null);
 
@@ -132,6 +140,10 @@ export default function AdminDashboard() {
             // 2️⃣ Get Students (ADMIN – uses token automatically)
             const studentRes = await adminAxios.get('/admin/students');
 
+
+            // Fetch AICTE Internship IDs
+            const aicteRes = await adminAxios.get('/admin/aicte');
+            setAicteList(aicteRes.data);
 
             setStudents(studentRes.data);
 
@@ -376,7 +388,7 @@ export default function AdminDashboard() {
     );
     // --- SUBMISSIONS LOGIC START ---
     const [activeTab, setActiveTab] = useState('overview');
-// If you already have activeTab, just ensure 'submissions' is handled
+    // If you already have activeTab, just ensure 'submissions' is handled
     const [submissions, setSubmissions] = useState([]);
     const [rejectModal, setRejectModal] = useState({ isOpen: false, id: null });
     const [feedback, setFeedback] = useState('');
@@ -400,6 +412,7 @@ export default function AdminDashboard() {
             alert("Error approving");
         }
     };
+
 
 
     const submitRejection = async () => {
@@ -443,6 +456,13 @@ export default function AdminDashboard() {
                                 className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800">
                                 <Users size={20} /> Students List
                             </button>
+                            <button
+                                onClick={() => setActiveTab('aicte')}
+                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800"
+                            >
+                                AICTE Internship IDs
+                            </button>
+
 
                             <button onClick={() => setActiveTab('colleges')}
                                 className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800">
@@ -604,7 +624,8 @@ export default function AdminDashboard() {
                                         <th className="p-4 font-bold text-slate-600">Email</th>
                                         <th className="p-4 font-bold text-slate-600">Payment</th>
                                         <th className="p-4 font-bold text-slate-600">Course</th>
-                                        <th className="p-4 font-bold text-slate-600">AICTE</th>
+                                        <th className="p-4 font-bold text-slate-600">AICTE / Verify</th>
+
                                         <th className="p-4 font-bold text-slate-600">Internship</th>
                                         <th className="p-4 font-bold text-slate-600">Certificate</th>
                                     </tr>
@@ -650,9 +671,31 @@ export default function AdminDashboard() {
                                                 </td>
 
                                                 {/* AICTE VERIFIED */}
-                                                <td className="p-4">
-                                                    {aicteVerified ? '✅' : '❌'}
+                                                <td className="p-4 space-y-1">
+                                                    <div>
+                                                        {aicteVerified ? '✅ Verified' : '❌ Not Verified'}
+                                                    </div>
+                                                    {aicteVerified ? (
+                                                        <span className="text-green-600 font-bold text-xs">
+                                                            Verified (Auto)
+                                                        </span>
+                                                    ) : enrollment?.aicteInternshipId ? (
+                                                        <span className="text-yellow-600 text-xs">
+                                                            Submitted (Pending Match)
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-400 text-xs italic">
+                                                            Not Submitted
+                                                        </span>
+                                                    )}
+
+                                                    {!enrollment?.aicteInternshipId && (
+                                                        <span className="text-xs text-slate-400 italic">
+                                                            ID not submitted
+                                                        </span>
+                                                    )}
                                                 </td>
+
 
                                                 {/* INTERNSHIP STATUS */}
                                                 <td className="p-4">
@@ -951,6 +994,116 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
                         )}
+                    </div>
+                )}
+                {adminRole === 'super_admin' && activeTab === 'aicte' && (
+                    <div className="space-y-8">
+                        <h2 className="text-2xl font-bold text-slate-800">
+                            AICTE Internship IDs
+                        </h2>
+
+                        {/* ADD AICTE ID FORM */}
+                        <div className="bg-white p-6 rounded-xl shadow border">
+                            <h3 className="font-bold mb-4">Add AICTE Internship ID</h3>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <input
+                                    type="email"
+                                    placeholder="Student Email"
+                                    value={aicteForm.email}
+                                    onChange={(e) =>
+                                        setAicteForm({ ...aicteForm, email: e.target.value })
+                                    }
+                                    className="border p-3 rounded-lg"
+                                />
+
+                                <select
+                                    value={aicteForm.courseId}
+                                    onChange={(e) =>
+                                        setAicteForm({ ...aicteForm, courseId: e.target.value })
+                                    }
+                                    className="border p-3 rounded-lg"
+                                >
+                                    <option value="">Select Course</option>
+                                    {courses.map((c) => (
+                                        <option key={c._id} value={c._id}>
+                                            {c.title}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <input
+                                    type="text"
+                                    placeholder="AICTE Internship ID"
+                                    value={aicteForm.aicteInternshipId}
+                                    onChange={(e) =>
+                                        setAicteForm({
+                                            ...aicteForm,
+                                            aicteInternshipId: e.target.value
+                                        })
+                                    }
+                                    className="border p-3 rounded-lg"
+                                />
+                            </div>
+
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        await adminAxios.post('/admin/aicte/add', aicteForm);
+                                        alert('AICTE ID added');
+                                        setAicteForm({ email: '', courseId: '', aicteInternshipId: '' });
+                                        const res = await adminAxios.get('/admin/aicte');
+                                        setAicteList(res.data);
+                                    } catch (err) {
+                                        alert(err.response?.data?.message || 'Failed to add AICTE ID');
+                                    }
+                                }}
+                                className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg font-bold"
+                            >
+                                Add AICTE ID
+                            </button>
+                        </div>
+
+                        {/* AICTE IDS TABLE */}
+                        <div className="bg-white rounded-xl shadow overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 border-b">
+                                    <tr>
+                                        <th className="p-4">Email</th>
+                                        <th className="p-4">Course</th>
+                                        <th className="p-4">AICTE ID</th>
+                                        <th className="p-4">Status</th>
+                                        <th className="p-4">Used By</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {aicteList.map((row) => (
+                                        <tr key={row._id} className="border-b">
+                                            <td className="p-4">{row.email}</td>
+                                            <td className="p-4">{row.course}</td>
+                                            <td className="p-4 font-mono text-sm">
+                                                {row.aicteInternshipId}
+                                            </td>
+                                            <td className="p-4">
+                                                {row.status === 'Unused' ? (
+                                                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">
+                                                        Unused
+                                                    </span>
+                                                ) : (
+                                                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">
+                                                        Used
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="p-4 text-sm">
+                                                {row.usedBy || '—'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
 
