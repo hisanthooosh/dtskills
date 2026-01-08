@@ -130,7 +130,8 @@ export default function AdminDashboard() {
             setCourses(courseRes.data);
 
             // 2️⃣ Get Students (ADMIN – uses token automatically)
-            const studentRes = await adminAxios.get('/student');
+            const studentRes = await adminAxios.get('/admin/students');
+
 
             setStudents(studentRes.data);
 
@@ -374,7 +375,8 @@ export default function AdminDashboard() {
         </div>
     );
     // --- SUBMISSIONS LOGIC START ---
-    const [activeTab, setActiveTab] = useState('dashboard'); // If you already have activeTab, just ensure 'submissions' is handled
+    const [activeTab, setActiveTab] = useState('overview');
+// If you already have activeTab, just ensure 'submissions' is handled
     const [submissions, setSubmissions] = useState([]);
     const [rejectModal, setRejectModal] = useState({ isOpen: false, id: null });
     const [feedback, setFeedback] = useState('');

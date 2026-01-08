@@ -17,7 +17,7 @@ import HodDashboard from './pages/hod/HodDashboard';
 
 import AdminProtectedRoute from './routes/AdminProtectedRoute';
 import AdminLogin from './pages/AdminLogin';
-import AdminCourses from './pages/AdminCourses';
+
 import AdminManageAdmins from './pages/AdminManageAdmins';
 
 
@@ -53,11 +53,12 @@ function App() {
         <Route
           path="/admin/dashboard"
           element={
-            <AdminProtectedRoute allowedRole="super_admin">
+            <AdminProtectedRoute allowedRole={['super_admin', 'course_admin']}>
               <AdminDashboard />
             </AdminProtectedRoute>
           }
         />
+
         <Route
           path="/admin/manage-admins"
           element={
@@ -69,14 +70,7 @@ function App() {
 
 
         {/* COURSE ADMIN */}
-        <Route
-          path="/admin/courses"
-          element={
-            <AdminProtectedRoute allowedRole="course_admin">
-              <AdminCourses />
-            </AdminProtectedRoute>
-          }
-        />
+
       </Routes>
     </Router>
   );

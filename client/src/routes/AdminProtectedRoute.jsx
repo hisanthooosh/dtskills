@@ -2,17 +2,22 @@ import { Navigate } from 'react-router-dom';
 
 export default function AdminProtectedRoute({ children, allowedRole }) {
   const admin = JSON.parse(localStorage.getItem('admin'));
+  const token = localStorage.getItem('adminToken');
 
-  // 1️⃣ Not logged in → kick out
-  if (!admin) {
-    return <Navigate to="/admin-login" />;
+  if (!admin || !token) {
+    return <Navigate to="/admin-login" replace />;
   }
 
-  // 2️⃣ Logged in but wrong role → kick out
-  if (allowedRole && admin.role !== allowedRole) {
-    return <Navigate to="/admin-login" />;
+  // Allow single role OR array of roles
+  if (Array.isArray(allowedRole)) {
+    if (!allowedRole.includes(admin.role)) {
+      return <Navigate to="/admin-login" replace />;
+    }
+  } else {
+    if (admin.role !== allowedRole) {
+      return <Navigate to="/admin-login" replace />;
+    }
   }
 
-  // 3️⃣ Allowed → show page
   return children;
 }
