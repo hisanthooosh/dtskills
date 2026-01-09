@@ -1,9 +1,19 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
+
 import axios from 'axios';
 import { ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 
-export default function SubmitAicteId({ courseId }) {
+export default function SubmitAicteId() {
+  const { courseId } = useParams();
+
   const student = JSON.parse(localStorage.getItem('student'));
+
+  if (!student) {
+    window.location.href = '/login';
+    return null;
+  }
+
   const [aicteId, setAicteId] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);

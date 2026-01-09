@@ -25,7 +25,8 @@ export default function CourseCatalog() {
   const handleEnroll = async (courseId) => {
     try {
       await axios.post('http://localhost:5000/api/student/enroll', {
-        studentId: student._id,
+       userId: student._id,
+
         courseId: courseId
       });
       alert("Enrolled Successfully!");

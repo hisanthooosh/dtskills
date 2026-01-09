@@ -131,5 +131,56 @@ router.post('/submit-aicte-id', async (req, res) => {
     });
   }
 });
+/**
+ * =========================================
+ * 🎓 STUDENT — ENROLL IN COURSE
+ * =========================================
+ */
+router.post('/enroll', async (req, res) => {
+  try {
+    const { userId, courseId } = req.body;
+
+    if (!userId || !courseId) {
+      return res.status(400).json({
+        message: 'userId and courseId are required'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Prevent duplicate enrollment
+    const alreadyEnrolled = user.enrolledCourses.some(
+      e => e.courseId.toString() === courseId
+    );
+
+    if (alreadyEnrolled) {
+      return res.status(400).json({
+        message: 'Student already enrolled in this course'
+      });
+    }
+
+    user.enrolledCourses.push({
+      courseId,
+      completedTopics: [],
+      courseCompleted: false,
+      internshipUnlocked: false
+    });
+
+    await user.save();
+
+    res.json({
+      message: 'Enrollment successful'
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: 'Failed to enroll in course'
+    });
+  }
+});
 
 module.exports = router;

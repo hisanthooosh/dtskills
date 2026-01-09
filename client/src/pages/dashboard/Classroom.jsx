@@ -12,6 +12,8 @@ const Classroom = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [course, setCourse] = useState(null);
+  const [internshipUnlocked, setInternshipUnlocked] = useState(false);
+
 
   // Navigation State
   const [activeModuleIndex, setActiveModuleIndex] = useState(0);
@@ -63,7 +65,8 @@ const Classroom = () => {
       // --- THE MISSING FIX: Sync fetched progress to local state ---
       setCompletedTopics(progressIds);
 
-      const internshipUnlocked = enrollment?.internshipUnlocked === true;
+      setInternshipUnlocked(enrollment?.internshipUnlocked === true);
+
 
 
       // 3. RESUME LOGIC: Find first uncompleted topic
@@ -105,19 +108,40 @@ const Classroom = () => {
 
   const currentModule = course.modules[activeModuleIndex];
   // 🚫 Prevent access to internship modules if not unlocked
-  if (activeModuleIndex >= 5 && !internshipUnlocked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="bg-white p-8 rounded-2xl shadow border text-center max-w-md">
-          <h2 className="text-xl font-bold mb-2">Internship Locked</h2>
-          <p className="text-slate-600 mb-4">
-            Submit your AICTE Internship ID and wait for admin approval
-            to unlock Modules 6–10.
-          </p>
-        </div>
+ if (activeModuleIndex >= 5 && !internshipUnlocked) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+      <div className="bg-white p-8 rounded-2xl shadow border text-center max-w-md w-full">
+        <Lock className="mx-auto mb-4 text-yellow-500" size={40} />
+
+        <h2 className="text-xl font-bold mb-2">
+          Internship Locked
+        </h2>
+
+        <p className="text-slate-600 mb-6 text-sm">
+          You’ve completed the course modules.<br />
+          Submit your <strong>AICTE Internship ID</strong> to unlock
+          <strong> Modules 6–10</strong>.
+        </p>
+
+        <button
+          onClick={() => navigate(`/submit-aicte/${id}`)}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition"
+        >
+          Submit AICTE Internship ID
+        </button>
+
+        <button
+          onClick={() => navigate('/dashboard/my-learning')}
+          className="mt-4 text-sm text-slate-500 hover:text-slate-700"
+        >
+          ← Go back to My Learning
+        </button>
       </div>
-    );
-  }
+    </div>
+  );
+}
+
 
   const isFinalInternshipModule = activeModuleIndex === 9;
 

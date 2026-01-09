@@ -19,6 +19,8 @@ import AdminProtectedRoute from './routes/AdminProtectedRoute';
 import AdminLogin from './pages/AdminLogin';
 
 import AdminManageAdmins from './pages/AdminManageAdmins';
+import SubmitAicteId from './pages/SubmitAicteId';
+
 
 
 function App() {
@@ -40,6 +42,11 @@ function App() {
 
         {/* CLASSROOM */}
         <Route path="/classroom/:id" element={<Classroom />} />
+        <Route
+          path="/submit-aicte/:courseId"
+          element={<SubmitAicteId />}
+        />
+
 
         {/* HOD */}
         <Route path="/hod-login" element={<HodLogin />} />
