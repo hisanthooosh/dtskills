@@ -112,9 +112,15 @@ router.post('/complete-topic', async (req, res) => {
       !enrollment.courseCompleted
     ) {
       enrollment.courseCompleted = true;
+
+      // Issue course certificate
       enrollment.courseCertificateIssued = true;
+
+      // Issue offer letter
       enrollment.offerLetterIssued = true;
-      enrollment.internshipUnlocked = true;
+
+      // 🚫 DO NOT unlock internship here
+      // Internship unlocks ONLY after AICTE verification
     }
 
 

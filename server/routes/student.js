@@ -68,6 +68,13 @@ router.post('/submit-aicte-id', async (req, res) => {
     const enrollment = user.enrolledCourses.find(
       e => e.courseId.toString() === courseId
     );
+    // 🔒 Ensure course is completed first
+    if (!enrollment.courseCompleted) {
+      return res.status(403).json({
+        message: 'Complete Modules 1–5 before AICTE verification'
+      });
+    }
+
 
     if (!enrollment) {
       return res.status(404).json({
