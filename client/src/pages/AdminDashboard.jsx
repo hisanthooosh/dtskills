@@ -141,9 +141,9 @@ export default function AdminDashboard() {
             const studentRes = await adminAxios.get('/admin/students');
 
 
-            // Fetch AICTE Internship IDs
-            const aicteRes = await adminAxios.get('/admin/aicte');
+            const aicteRes = await adminAxios.get('/admin-manage/aicte');
             setAicteList(aicteRes.data);
+
 
             setStudents(studentRes.data);
 
@@ -1049,11 +1049,13 @@ export default function AdminDashboard() {
                             <button
                                 onClick={async () => {
                                     try {
-                                        await adminAxios.post('/admin/aicte/add', aicteForm);
+                                        await adminAxios.post('/admin-manage/aicte/add', aicteForm);
+
                                         alert('AICTE ID added');
                                         setAicteForm({ email: '', courseId: '', aicteInternshipId: '' });
-                                        const res = await adminAxios.get('/admin/aicte');
+                                        const res = await adminAxios.get('/admin-manage/aicte');
                                         setAicteList(res.data);
+
                                     } catch (err) {
                                         alert(err.response?.data?.message || 'Failed to add AICTE ID');
                                     }
