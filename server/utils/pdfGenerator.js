@@ -11,12 +11,26 @@ async function generateCertificate(data) {
     program,
     durationWeeks,
     issueText,
-    verificationUrl
+    verificationUrl,
+
+    // 👇 ONLY FOR INTERNSHIP
+    internshipStartedAt,
+    internshipEndsAt
   } = data;
 
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
   const pageWidth = doc.page.width;
   const pageHeight = doc.page.height;
+
+  /* ================= DATE HELPERS ================= */
+  const formatDate = (date) => {
+    if (!date) return '';
+    return new Date(date).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
 
   /* ================= BORDER ================= */
   doc
@@ -101,7 +115,7 @@ async function generateCertificate(data) {
     .fillColor('#111827')
     .text(
       type === 'internship'
-        ? `has successfully completed the ${durationWeeks || 8}-week internship program in`
+        ? `has successfully completed the ${durationWeeks || 6}-week internship program in`
         : 'has successfully completed the certified course in',
       { align: 'center' }
     );
@@ -113,7 +127,20 @@ async function generateCertificate(data) {
     .fillColor('#000')
     .text(program || 'Skill Development Program', { align: 'center' });
 
-  doc.moveDown(1.5);
+  doc.moveDown(1.2);
+
+  /* ================= INTERNSHIP DATES (ONLY FOR INTERNSHIP) ================= */
+  if (type === 'internship' && internshipStartedAt && internshipEndsAt) {
+    doc
+      .fontSize(13)
+      .fillColor('#111827')
+      .text(
+        `Internship Duration: ${formatDate(internshipStartedAt)} to ${formatDate(internshipEndsAt)}`,
+        { align: 'center' }
+      );
+
+    doc.moveDown(1);
+  }
 
   /* ================= AICTE WORDING ================= */
   doc
@@ -142,7 +169,7 @@ async function generateCertificate(data) {
     .fontSize(11)
     .text(`Certificate ID: ${certId}`, 70, pageHeight - 150);
 
-  /* ================= SIGNATURE (SAFE) ================= */
+  /* ================= SIGNATURE ================= */
   if (fs.existsSync(signPath)) {
     try {
       doc.image(signPath, pageWidth - 230, pageHeight - 200, { width: 120 });
@@ -159,7 +186,7 @@ async function generateCertificate(data) {
     .fontSize(10)
     .text('DT Skills', pageWidth - 240, pageHeight - 115);
 
-  /* ================= QR CODE (SAFE) ================= */
+  /* ================= QR CODE ================= */
   if (verificationUrl) {
     try {
       const qrData = await QRCode.toDataURL(verificationUrl);

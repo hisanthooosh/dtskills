@@ -55,6 +55,17 @@ const EnrolledCourseSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // Internship duration tracking (45 days)
+  internshipStartedAt: {
+    type: Date,
+    default: null
+  },
+
+  internshipEndsAt: {
+    type: Date,
+    default: null
+  },
+
 
   internshipGithubRepo: {
     type: String,

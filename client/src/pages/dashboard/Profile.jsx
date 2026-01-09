@@ -63,6 +63,24 @@ export default function Profile() {
   const internshipCompleted = enrollment.internshipCompleted;
   const internshipCert = enrollment.internshipCertificateIssued;
 
+  const internshipStartedAt = enrollment.internshipStartedAt
+    ? new Date(enrollment.internshipStartedAt)
+    : null;
+
+  const internshipEndsAt = enrollment.internshipEndsAt
+    ? new Date(enrollment.internshipEndsAt)
+    : null;
+
+  // ⏳ Calculate remaining days
+  let daysRemaining = null;
+
+  if (internshipEndsAt) {
+    const now = new Date();
+    const diff = internshipEndsAt - now;
+    daysRemaining = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+  }
+
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-10">
 
@@ -146,6 +164,23 @@ export default function Profile() {
             title="Internship Certificate"
             icon={Award}
             active={internshipCert}
+            lockedInfo={
+              internshipUnlocked && !internshipCert && internshipEndsAt ? (
+                <div className="text-xs text-slate-500 space-y-1 mt-2">
+                  <p>
+                    <strong>Start:</strong>{' '}
+                    {internshipStartedAt?.toLocaleDateString()}
+                  </p>
+                  <p>
+                    <strong>End:</strong>{' '}
+                    {internshipEndsAt?.toLocaleDateString()}
+                  </p>
+                  <p className="text-orange-600 font-bold">
+                    ⏳ {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining
+                  </p>
+                </div>
+              ) : null
+            }
             onPreview={() =>
               window.open(
                 `http://localhost:5000/api/certificates/internship/${student._id}`,
@@ -159,6 +194,7 @@ export default function Profile() {
               )
             }
           />
+
 
         </div>
       </div>
@@ -220,13 +256,23 @@ function TimelineItem({ label, active }) {
     </div>
   );
 }
-
-function CertificateCard({ title, icon: Icon, active, onPreview, onDownload }) {
+function CertificateCard({
+  title,
+  icon: Icon,
+  active,
+  onPreview,
+  onDownload,
+  lockedInfo
+}) {
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition">
       <div className="flex items-center gap-3 mb-4">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${active ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'
-          }`}>
+        <div
+          className={`w-12 h-12 rounded-xl flex items-center justify-center ${active
+              ? 'bg-green-100 text-green-600'
+              : 'bg-slate-100 text-slate-400'
+            }`}
+        >
           <Icon size={22} />
         </div>
         <h3 className="font-bold text-slate-800">{title}</h3>
@@ -248,8 +294,9 @@ function CertificateCard({ title, icon: Icon, active, onPreview, onDownload }) {
           </button>
         </div>
       ) : (
-        <div className="text-xs text-slate-400 bg-slate-100 py-2 text-center rounded-xl">
-          Locked
+        <div className="text-xs text-slate-400 bg-slate-100 py-3 text-center rounded-xl">
+          <p className="font-semibold">Locked</p>
+          {lockedInfo}
         </div>
       )}
     </div>

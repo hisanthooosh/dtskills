@@ -53,30 +53,38 @@ router.post('/submit', async (req, res) => {
     }
 
     // =====================================================
-    // ✅ AUTO APPROVAL LOGIC
+    // ✅ INTERNSHIP SUBMISSION LOGIC (45-DAY SAFE)
     // =====================================================
 
     enrollment.internshipGithubRepo = githubRepo;
     enrollment.internshipSubmittedAt = new Date();
 
-    // ✅ AUTO COMPLETE INTERNSHIP
+    // Mark internship work as completed
     enrollment.internshipCompleted = true;
 
-    // ✅ AUTO ISSUE INTERNSHIP CERTIFICATE
-    enrollment.internshipCertificateIssued = true;
+    // ⏳ Certificate will be issued ONLY after 45 days
+    const now = new Date();
 
-    // ✅ ENSURE OFFER LETTER (ONLY IF COURSE COMPLETED)
+    if (
+      enrollment.internshipEndsAt &&
+      now >= enrollment.internshipEndsAt
+    ) {
+      enrollment.internshipCertificateIssued = true;
+    }
+
+    // Ensure offer letter (course phase)
     if (enrollment.courseCompleted && !enrollment.offerLetterIssued) {
       enrollment.offerLetterIssued = true;
     }
-
     await user.save();
+
 
     res.json({
       success: true,
       message: 'Internship project submitted & approved automatically',
       internshipCompleted: true,
-      internshipCertificateIssued: true,
+      internshipCertificateIssued: enrollment.internshipCertificateIssued,
+
       offerLetterIssued: enrollment.offerLetterIssued
     });
 

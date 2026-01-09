@@ -120,10 +120,20 @@ router.post('/submit-aicte-id', async (req, res) => {
     await record.save();
 
     // ✅ Unlock internship in student enrollment
+    const now = new Date();
+    const internshipDurationDays = 45;
+
     enrollment.aicteInternshipId = record.aicteInternshipId;
     enrollment.aicteVerified = true;
     enrollment.internshipUnlocked = true;
-    enrollment.internshipVerifiedAt = new Date();
+    enrollment.internshipVerifiedAt = now;
+
+    // ⏳ Start 45-day internship clock
+    enrollment.internshipStartedAt = now;
+    enrollment.internshipEndsAt = new Date(
+      now.getTime() + internshipDurationDays * 24 * 60 * 60 * 1000
+    );
+
 
     await user.save();
 
