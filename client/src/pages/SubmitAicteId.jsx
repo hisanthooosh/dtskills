@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+
 
 import axios from 'axios';
 import { ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
@@ -8,6 +10,8 @@ export default function SubmitAicteId() {
   const { courseId } = useParams();
 
   const student = JSON.parse(localStorage.getItem('student'));
+  const navigate = useNavigate();
+
 
   if (!student) {
     window.location.href = '/login';
@@ -39,9 +43,11 @@ export default function SubmitAicteId() {
       );
 
       setSubmitted(true);
+
       setTimeout(() => {
-        window.location.href = `/classroom/${courseId}`;
-      }, 1500);
+        navigate(`/classroom/${courseId}`, { replace: true });
+      }, 1000);
+
 
     } catch (err) {
       setError(
