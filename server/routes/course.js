@@ -85,10 +85,16 @@ router.post('/complete-topic', async (req, res) => {
       return res.status(404).json({ msg: "Enrollment not found" });
     }
 
+    // ✅ Ensure completedTopics exists (SAFE for old users)
+    if (!Array.isArray(enrollment.completedTopics)) {
+      enrollment.completedTopics = [];
+    }
+
     // ✅ Add topic only once
     if (!enrollment.completedTopics.includes(topicId)) {
       enrollment.completedTopics.push(topicId);
     }
+
 
     const course = enrollment.courseId;
 
