@@ -1,3 +1,7 @@
+
+console.log("API BASE URL:", import.meta.env.VITE_API_BASE_URL);
+
+
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -15,7 +19,8 @@ export default function AdminLogin() {
 
     try {
       const res = await axios.post(
-        'http://localhost:5000/api/admin-auth/login',
+        `${import.meta.env.VITE_API_BASE_URL}/admin-auth/login`
+,
         { email, password }
       );
 

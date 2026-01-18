@@ -1,0 +1,8 @@
+{
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/f8361ebf-2fb9-4e5f-a631-d21c19e513ee/resourceGroups/dtskills_group/providers/Microsoft.Web/sites/dtskills",
+    "appService.deploySubpath": "server"
+}

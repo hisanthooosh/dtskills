@@ -23,7 +23,8 @@ export default function Profile() {
         if (!local?._id) return;
 
         const res = await fetch(
-          `http://localhost:5000/api/student/${local._id}`
+         `${import.meta.env.VITE_API_BASE_URL}/student/${local._id}`
+
         );
         const data = await res.json();
 
@@ -128,13 +129,13 @@ export default function Profile() {
             active={courseCert}
             onPreview={() =>
               window.open(
-                `http://localhost:5000/api/certificates/course/${student._id}`,
+                `${import.meta.env.VITE_API_BASE_URL}/certificates/course/${student._id}`,
                 '_blank'
               )
             }
             onDownload={() =>
               window.open(
-                `http://localhost:5000/api/certificates/course/${student._id}?download=true`,
+                `${import.meta.env.VITE_API_BASE_URL}/certificates/course/${student._id}?download=true`,
                 '_blank'
               )
             }
@@ -147,13 +148,13 @@ export default function Profile() {
             active={offerLetter}
             onPreview={() =>
               window.open(
-                `http://localhost:5000/api/certificates/offer-letter/${student._id}`,
+                `${import.meta.env.VITE_API_BASE_URL}/certificates/offer-letter/${student._id}`,
                 '_blank'
               )
             }
             onDownload={() =>
               window.open(
-                `http://localhost:5000/api/certificates/offer-letter/${student._id}?download=true`,
+                `${import.meta.env.VITE_API_BASE_URL}/certificates/offer-letter/${student._id}?download=true`,
                 '_blank'
               )
             }
@@ -183,13 +184,13 @@ export default function Profile() {
             }
             onPreview={() =>
               window.open(
-                `http://localhost:5000/api/certificates/internship/${student._id}`,
+                `${import.meta.env.VITE_API_BASE_URL}/certificates/internship/${student._id}`,
                 '_blank'
               )
             }
             onDownload={() =>
               window.open(
-                `http://localhost:5000/api/certificates/internship/${student._id}?download=true`,
+                `${import.meta.env.VITE_API_BASE_URL}/certificates/internship/${student._id}?download=true`,
                 '_blank'
               )
             }

@@ -6,6 +6,7 @@ const AicteInternship = require('../models/AicteInternship');
 
 const adminAuth = require('../middleware/adminAuth');
 const adminRole = require('../middleware/adminRole');
+const bcrypt = require('bcryptjs'); // add at top if not present
 
 /**
  * =========================================
@@ -41,12 +42,18 @@ router.post(
       return res.status(400).json({ error: 'Admin already exists' });
     }
 
+    
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const admin = new Admin({
-      email,
-      password,
+      email: normalizedEmail,
+      password: hashedPassword,
       role: 'course_admin',
       isActive: true
     });
+
 
     await admin.save();
     res.json({ message: 'Course admin created successfully' });

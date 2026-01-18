@@ -34,7 +34,7 @@ export default function SubmitAicteId() {
       setError('');
 
       await axios.post(
-        'http://localhost:5000/api/student/submit-aicte-id',
+        `${import.meta.env.VITE_API_BASE_URL}/student/submit-aicte-id`,
         {
           studentId: student._id,
           courseId,

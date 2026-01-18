@@ -15,7 +15,7 @@ const HodLogin = () => {
 
     try {
       const res = await axios.post(
-        'http://localhost:5000/api/college/login',
+        '${import.meta.env.VITE_API_BASE_URL}/college/login',
         { email, password }
       );
 

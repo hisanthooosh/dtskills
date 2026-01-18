@@ -20,10 +20,13 @@ const SearchableDropdown = ({ label, options, selectedVal, onSelect, displayKey,
   }, [wrapperRef]);
 
   // Filter options based on search
-  const filteredOptions = options.filter(option => {
-    const valueToCheck = displayKey ? option[displayKey] : option;
-    return String(valueToCheck).toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  const filteredOptions = Array.isArray(options)
+  ? options.filter(option => {
+      const valueToCheck = displayKey ? option[displayKey] : option;
+      return String(valueToCheck).toLowerCase().includes(searchTerm.toLowerCase());
+    })
+  : [];
+
 
   return (
     <div className="relative mb-4" ref={wrapperRef}>
@@ -103,7 +106,8 @@ export default function Register() {
 
   // Fetch Colleges
   useEffect(() => {
-    axios.get('http://localhost:5000/api/college/all')
+    axios.get(`${import.meta.env.VITE_API_BASE_URL}/college/all`)
+
       .then(res => setColleges(res.data))
       .catch(err => console.error("Error fetching colleges:", err));
   }, []);
@@ -118,7 +122,7 @@ export default function Register() {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post('http://localhost:5000/api/auth/register', formData);
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/register`, formData);
       alert("Registration Successful! Please Login.");
       navigate('/login');
     } catch (err) {

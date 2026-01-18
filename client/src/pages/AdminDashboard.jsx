@@ -134,7 +134,8 @@ export default function AdminDashboard() {
     const fetchData = async () => {
         try {
             // 1️⃣ Get Courses (public)
-            const courseRes = await axios.get('http://localhost:5000/api/courses');
+            const courseRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses`)
+                ;
             setCourses(courseRes.data);
 
             // 2️⃣ Get Students (ADMIN – uses token automatically)
@@ -287,7 +288,8 @@ export default function AdminDashboard() {
 
         try {
             // Send only the name to the backend
-            await axios.post('http://localhost:5000/api/college/add', {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/college/add`, {
+
                 name: newCollege.name
             });
 
@@ -304,7 +306,8 @@ export default function AdminDashboard() {
     const [newCourse, setNewCourse] = useState({ name: '', start: '', end: '' });
 
     useEffect(() => {
-        axios.get('http://localhost:5000/api/college/all')
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/college/all`)
+
             .then(res => setCollegesList(res.data))
             .catch(err => console.error(err));
     }, []);
@@ -314,9 +317,15 @@ export default function AdminDashboard() {
         if (!newName || newName === currentName) return;
 
         try {
-            await axios.put(`http://localhost:5000/api/college/update/${collegeId}`, { name: newName });
+            await axios.put(
+                `${import.meta.env.VITE_API_BASE_URL}/college/update/${collegeId}`,
+                { name: newName }
+            );
             alert("College Name Updated!");
-            const res = await axios.get('http://localhost:5000/api/college/all');
+            const res = await axios.get(
+                `${import.meta.env.VITE_API_BASE_URL}/college/all`
+            );
+
             setCollegesList(res.data);
         } catch (err) {
             alert("Error updating college");
@@ -328,13 +337,19 @@ export default function AdminDashboard() {
         if (!newName || newName === currentName) return;
 
         try {
-            await axios.put(`http://localhost:5000/api/college/update-course`, {
-                collegeId,
-                courseId,
-                newName
-            });
+            await axios.put(
+                `${import.meta.env.VITE_API_BASE_URL}/college/update-course`,
+                {
+
+                    collegeId,
+                    courseId,
+                    newName
+                });
             alert("Department Updated!");
-            const res = await axios.get('http://localhost:5000/api/college/all');
+            const res = await axios.get(
+                `${import.meta.env.VITE_API_BASE_URL}/college/all`
+            );
+
             setCollegesList(res.data);
         } catch (err) {
             alert("Error updating department");
@@ -343,9 +358,7 @@ export default function AdminDashboard() {
 
     // const handleCreateCollege = async () => {
     //     try {
-    //         await axios.post('http://localhost:5000/api/college/add', { name: newCollegeName });
-    //         alert('College Added');
-    //         const res = await axios.get('http://localhost:5000/api/college/all');
+    //         
     //         setCollegesList(res.data);
     //         setNewCollegeName('');
     //     } catch (err) { console.error(err); }
@@ -359,14 +372,17 @@ export default function AdminDashboard() {
         }
 
         try {
-            await axios.post('http://localhost:5000/api/college/add-course', {
-                collegeId: targetCollegeId,
-                courseName: newCourse.name,
-                startRoll: newCourse.start,
-                endRoll: newCourse.end,
-                hodEmail: newCourse.hodEmail,       // 👈 Send this
-                hodPassword: newCourse.hodPassword  // 👈 Send this
-            });
+            await axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/college/add-course`,
+                {
+
+                    collegeId: targetCollegeId,
+                    courseName: newCourse.name,
+                    startRoll: newCourse.start,
+                    endRoll: newCourse.end,
+                    hodEmail: newCourse.hodEmail,       // 👈 Send this
+                    hodPassword: newCourse.hodPassword  // 👈 Send this
+                });
             alert("Department Added Successfully!");
             fetchColleges();
         } catch (error) {

@@ -8,8 +8,14 @@ const LandingPage = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/courses');
-        setCourses(response.data);
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses`)
+          ;
+        setCourses(
+          Array.isArray(response.data)
+            ? response.data
+            : response.data.courses || []
+        );
+
       } catch (error) {
         console.error("Error fetching courses:", error);
       }

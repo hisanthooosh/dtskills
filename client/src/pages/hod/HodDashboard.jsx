@@ -29,7 +29,7 @@ const HodDashboard = () => {
     const fetchDetails = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/college/${hodCollegeId}`
+          `${import.meta.env.VITE_API_BASE_URL}/college/${hodCollegeId}`
         );
         setCollegeData(res.data);
         processStudents(res.data, hodDept);

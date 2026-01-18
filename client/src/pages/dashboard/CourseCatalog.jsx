@@ -11,7 +11,8 @@ export default function CourseCatalog() {
 
   useEffect(() => {
     // Fetch all available courses
-    axios.get('http://localhost:5000/api/courses')
+    axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses`)
+
       .then(res => {
         setCourses(res.data);
         setLoading(false);
@@ -24,7 +25,8 @@ export default function CourseCatalog() {
 
   const handleEnroll = async (courseId) => {
     try {
-      await axios.post('http://localhost:5000/api/student/enroll', {
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/student/enroll`, {
+
        userId: student._id,
 
         courseId: courseId

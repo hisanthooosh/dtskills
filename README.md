@@ -80,7 +80,7 @@ ADMIN_SECRET=doneswari_admin_2025
 
 ```bash
 npm run dev
-# Server should be running on http://localhost:5000
+# Server should be running on 
 
 ```
 

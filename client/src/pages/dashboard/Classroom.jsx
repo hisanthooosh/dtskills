@@ -47,8 +47,9 @@ const Classroom = () => {
     try {
       // 1. Parallel fetch for speed
       const [courseRes, studentRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/courses/${id}`),
-        axios.get(`http://localhost:5000/api/student/${userId}`)
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses/${id}`),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/student/${userId}`)
+
       ]);
 
       const courseData = courseRes.data;
@@ -203,7 +204,8 @@ const Classroom = () => {
         setCompletedTopics([...completedTopics, currentTopic._id]);
       }
 
-      await axios.post('http://localhost:5000/api/courses/complete-topic', {
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/courses/complete-topic`, {
+
         userId,
         courseId: id,
         topicId: currentTopic._id
@@ -243,7 +245,8 @@ const Classroom = () => {
     try {
       setSubmitting(true);
 
-      await axios.post('http://localhost:5000/api/internship/submit', {
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/internship/submit`, {
+
         userId,
         courseId: id,
         githubRepo
@@ -502,7 +505,8 @@ const Classroom = () => {
                   <button
                     onClick={async () => {
                       try {
-                        await axios.post('http://localhost:5000/api/internship/submit', {
+                        await axios.post(`${import.meta.env.VITE_API_BASE_URL}/internship/submit`, {
+
                           userId,
                           courseId: id,
                           githubRepo

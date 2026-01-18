@@ -19,7 +19,8 @@ export default function MyLearning() {
     const fetchStudentData = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/student/${studentLocal._id}`
+          `${import.meta.env.VITE_API_BASE_URL}/student/${studentLocal._id}`
+
         );
         setEnrolledCourses(res.data.enrolledCourses || []);
       } catch (err) {
