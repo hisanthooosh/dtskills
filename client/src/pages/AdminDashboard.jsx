@@ -42,6 +42,8 @@ export default function AdminDashboard() {
 
     // ---------------- REVENUE CALCULATIONS ----------------
     const [adminRole, setAdminRole] = useState(null);
+    const [activeTab, setActiveTab] = useState('overview');
+
 
 
     // Total paid enrollments
@@ -52,9 +54,13 @@ export default function AdminDashboard() {
     // 1️⃣ TOTAL REVENUE
     const TOTAL_REVENUE = paidEnrollments.length * 200;
 
-    // 2️⃣ PAID vs UNPAID
-    const PAID_COUNT = paidEnrollments.length;
-    const UNPAID_COUNT = students.length - PAID_COUNT;
+    // Count UNIQUE paid students
+    const PAID_STUDENTS = students.filter(student =>
+        student.enrolledCourses?.some(course => course.isPaid)
+    ).length;
+
+    const UNPAID_COUNT = students.length - PAID_STUDENTS;
+
 
     // 3️⃣ REVENUE PER COURSE
     const revenuePerCourse = {};
@@ -82,13 +88,23 @@ export default function AdminDashboard() {
     const [editingId, setEditingId] = useState(null); // Track if editing a draft
 
     // Admin Secret
+    const fetchColleges = async () => {
+        try {
+            const res = await axios.get(
+                `${import.meta.env.VITE_API_BASE_URL}/college/all`
+            );
+            setCollegesList(res.data);
+        } catch (err) {
+            console.error("Failed to fetch colleges", err);
+        }
+    };
 
 
     // --- BUILDER STATE ---
     // FIX: Changed 'chapters' to 'modules' to match backend
     const [courseData, setCourseData] = useState({ title: '', description: '', price: 200, modules: [] });
     // 🔹 COURSE / INTERNSHIP SPLIT
-    const COURSE_MODULE_LIMIT = 5;
+
 
     const [newModuleTitle, setNewModuleTitle] = useState('');
     const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
@@ -117,36 +133,46 @@ export default function AdminDashboard() {
     useEffect(() => {
         const adminData = JSON.parse(localStorage.getItem('admin'));
 
-        if (!adminData) {
-            window.location.href = '/admin';
+        if (!adminData || !adminData.role) {
+            localStorage.clear();
+            window.location.href = '/admin-login';
             return;
         }
+
 
         setAdminRole(adminData.role);
     }, []);
 
+    useEffect(() => {
+        if (adminRole === 'course_admin') {
+            setActiveTab('courses');
+        }
+    }, [adminRole]);
 
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (adminRole) {
+            fetchData();
+        } else {
+            setLoading(false); // 🔑 SAFETY
+        }
+    }, [adminRole]);
+
 
     const fetchData = async () => {
         try {
-            // 1️⃣ Get Courses (public)
-            const courseRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses`)
-                ;
+            const courseRes = await adminAxios.get('/courses/admin/all');
             setCourses(courseRes.data);
 
-            // 2️⃣ Get Students (ADMIN – uses token automatically)
-            const studentRes = await adminAxios.get('/admin/students');
 
+            // SUPER ADMIN ONLY
+            if (adminRole === 'super_admin') {
+                const studentRes = await adminAxios.get('/admin/students');
+                setStudents(studentRes.data);
 
-            const aicteRes = await adminAxios.get('/admin-manage/aicte');
-            setAicteList(aicteRes.data);
-
-
-            setStudents(studentRes.data);
+                const aicteRes = await adminAxios.get('/admin-manage/aicte');
+                setAicteList(aicteRes.data);
+            }
 
             setLoading(false);
         } catch (err) {
@@ -155,13 +181,24 @@ export default function AdminDashboard() {
     };
 
 
-    // --- ACTIONS ---
+
     const handleDeleteCourse = async (id) => {
         if (!confirm("Delete this course permanently?")) return;
-        await adminAxios.delete(`/admin/course/${id}`);
 
-        fetchData();
+        try {
+            await adminAxios.delete(`/courses/${id}`);
+
+
+            // 🔥 REMOVE FROM STATE IMMEDIATELY
+            setCourses(prev => prev.filter(course => course._id !== id));
+
+            alert("Course deleted successfully");
+        } catch (err) {
+            console.error(err);
+            alert("Delete failed");
+        }
     };
+
     const handleContinueEditing = (course) => {
         setEditingId(course._id);
 
@@ -202,13 +239,12 @@ export default function AdminDashboard() {
 
         const updatedModules = [...courseData.modules];
 
-        // FIX: Create a topic object that works for both Frontend (content) and Backend (textContent)
         const topicToSave = {
-            ...currentTopic,
-            textContent: currentTopic.content, // <--- CRITICAL FIX: Maps text for the Database
-            content: currentTopic.content,     // Keeps text for the Editor
-            video: currentTopic.video || ''
+            title: currentTopic.title,
+            textContent: currentTopic.content,
+            quiz: currentTopic.quizzes
         };
+
 
         updatedModules[selectedModuleIndex].topics.push(topicToSave);
 
@@ -216,31 +252,38 @@ export default function AdminDashboard() {
 
         setCurrentTopic({ title: '', content: '', quizzes: [] });
     };
-
     const handleSaveCourse = async (isPublished) => {
         try {
-            await adminAxios.post('/courses/publish', {
+            const response = await adminAxios.post('/courses/publish', {
                 ...courseData,
-                _id: editingId,
-                isPublished: isPublished
+                isPublished,
+                _id: editingId || null,
+                adminSecret: 'doneswari_admin_2025'
             });
 
+            // 🔑 IMPORTANT: store ID after first save
+            if (!editingId && response.data?._id) {
+                setEditingId(response.data._id);
+            }
 
+            alert(isPublished ? 'Course Published!' : 'Draft Saved!');
+
+            // 🔄 reload courses list
+            fetchData();
+
+            // reset only after publish
             if (isPublished) {
-                alert("Course Published Live to Students!");
-                // Reset form completely
                 setCourseData({ title: '', description: '', price: 200, modules: [] });
                 setEditingId(null);
-                setActiveTab('courses');
-            } else {
-                alert("Draft Saved! You can continue editing later.");
             }
-            fetchData();
+
+            setActiveTab('courses');
         } catch (err) {
             console.error(err);
-            alert("Error saving: " + (err.response?.data?.error || err.message));
+            alert('Error saving course');
         }
     };
+
 
     const addQuizToTopic = () => {
         if (!tempQuiz.question) return alert("Please type a question");
@@ -280,37 +323,33 @@ export default function AdminDashboard() {
     const [newCollege, setNewCollege] = useState({ name: '', hodEmail: '', hodPassword: '' });
 
     const handleCreateCollege = async () => {
-        // Corrected: Only check for the College Name now
         if (!newCollege.name) {
             alert("Please fill in the College Name");
             return;
         }
 
         try {
-            // Send only the name to the backend
-            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/college/add`, {
-
-                name: newCollege.name
-            });
+            await axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/college/add`,
+                { name: newCollege.name }
+            );
 
             alert('College Created Successfully!');
-            setNewCollege({ name: '', hodEmail: '', hodPassword: '' }); // Reset form
-            fetchColleges(); // Refresh the list
+            setNewCollege({ name: '', hodEmail: '', hodPassword: '' });
+
+            // ✅ REFRESH UI
+            fetchColleges();
         } catch (error) {
             console.error(error);
             alert(error.response?.data?.error || 'Error creating college');
         }
     };
+
     const [collegesList, setCollegesList] = useState([]);
     const [targetCollegeId, setTargetCollegeId] = useState('');
     const [newCourse, setNewCourse] = useState({ name: '', start: '', end: '' });
 
-    useEffect(() => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/college/all`)
 
-            .then(res => setCollegesList(res.data))
-            .catch(err => console.error(err));
-    }, []);
 
     const handleEditCollege = async (collegeId, currentName) => {
         const newName = prompt("Enter new College Name:", currentName);
@@ -363,9 +402,7 @@ export default function AdminDashboard() {
     //         setNewCollegeName('');
     //     } catch (err) { console.error(err); }
     // };
-
     const handleGenerateRolls = async () => {
-        // Basic validation
         if (!targetCollegeId || !newCourse.name || !newCourse.start || !newCourse.end || !newCourse.hodEmail || !newCourse.hodPassword) {
             alert("Please fill all fields including HOD details");
             return;
@@ -375,15 +412,18 @@ export default function AdminDashboard() {
             await axios.post(
                 `${import.meta.env.VITE_API_BASE_URL}/college/add-course`,
                 {
-
                     collegeId: targetCollegeId,
                     courseName: newCourse.name,
                     startRoll: newCourse.start,
                     endRoll: newCourse.end,
-                    hodEmail: newCourse.hodEmail,       // 👈 Send this
-                    hodPassword: newCourse.hodPassword  // 👈 Send this
-                });
+                    hodEmail: newCourse.hodEmail,
+                    hodPassword: newCourse.hodPassword
+                }
+            );
+
             alert("Department Added Successfully!");
+
+            // ✅ REFRESH UI
             fetchColleges();
         } catch (error) {
             alert("Error adding course");
@@ -403,7 +443,7 @@ export default function AdminDashboard() {
         </div>
     );
     // --- SUBMISSIONS LOGIC START ---
-    const [activeTab, setActiveTab] = useState('overview');
+    // const [activeTab, setActiveTab] = useState('overview');
     // If you already have activeTab, just ensure 'submissions' is handled
     const [submissions, setSubmissions] = useState([]);
     const [rejectModal, setRejectModal] = useState({ isOpen: false, id: null });
@@ -417,6 +457,13 @@ export default function AdminDashboard() {
                 .catch(err => console.error(err));
         }
     }, [activeTab]);
+    useEffect(() => {
+        if (adminRole === 'super_admin') {
+            fetchColleges();
+        }
+    }, [adminRole]);
+
+
 
     const handleApprove = async (id) => {
         try {
@@ -448,8 +495,12 @@ export default function AdminDashboard() {
         } catch (error) { alert("Error rejecting"); }
     };
     // --- SUBMISSIONS LOGIC END ---
+    if (loading) {
+        return <div className="p-10 text-center">Loading admin dashboard...</div>;
+    }
 
     return (
+
         <div className="flex h-screen bg-slate-100 font-sans">
 
             {/* --- SIDEBAR --- */}
@@ -556,7 +607,7 @@ export default function AdminDashboard() {
 
                             <StatsCard
                                 title="Paid Students"
-                                value={PAID_COUNT}
+                                value={PAID_STUDENTS}
                                 color="border-emerald-500"
                                 icon={CheckCircle}
                             />

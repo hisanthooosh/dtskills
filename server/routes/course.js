@@ -3,22 +3,34 @@ const router = express.Router();
 const Course = require('../models/Course');
 const User = require('../models/User');
 
-
 const adminAuth = require('../middleware/adminAuth');
 const requireRole = require('../middleware/adminRole');
 
-// --- 1. GET Single Course ---
-router.get('/:id', async (req, res) => {
-  try {
-    const course = await Course.findById(req.params.id);
-    if (!course) return res.status(404).json({ message: "Course not found" });
-    res.json(course);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+/**
+ * =========================================
+ * ADMIN — GET ALL COURSES (DRAFT + PUBLISHED)
+ * =========================================
+ * USED BY: AdminDashboard → Manage Courses
+ */
+router.get(
+  '/admin/all',
+  adminAuth,
+  requireRole(['super_admin', 'course_admin']),
+  async (req, res) => {
+    try {
+      const courses = await Course.find().sort({ createdAt: -1 });
+      res.json(courses);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   }
-});
+);
 
-// --- 2. GET All Courses (Catalog) ---
+/**
+ * =========================================
+ * PUBLIC — GET ALL COURSES (CATALOG)
+ * =========================================
+ */
 router.get('/', async (req, res) => {
   try {
     const courses = await Course.find();
@@ -28,36 +40,81 @@ router.get('/', async (req, res) => {
   }
 });
 
+/**
+ * =========================================
+ * PUBLIC — GET SINGLE COURSE
+ * ⚠️ MUST BE LAST (VERY IMPORTANT)
+ * =========================================
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+    res.json(course);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * =========================================
+ * ADMIN — CREATE / UPDATE COURSE (PUBLISH)
+ * =========================================
+ */
 router.post(
   '/publish',
   adminAuth,
   requireRole(['super_admin', 'course_admin']),
   async (req, res) => {
     try {
-      const { _id, title, description, price, modules, isPublished, adminSecret } = req.body;
+      const {
+        _id,
+        title,
+        description,
+        price,
+        modules,
+        isPublished,
+        adminSecret
+      } = req.body;
 
-      // Security check (Keep your existing check)
-      if (adminSecret !== process.env.ADMIN_SECRET && adminSecret !== "doneswari_admin_2025") {
+      if (
+        adminSecret !== process.env.ADMIN_SECRET &&
+        adminSecret !== "doneswari_admin_2025"
+      ) {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
       if (_id) {
-        // IF ID EXISTS -> UPDATE THE DRAFT
-        const updated = await Course.findByIdAndUpdate(_id, {
-          title, description, price, modules, isPublished
-        }, { new: true });
+        const updated = await Course.findByIdAndUpdate(
+          _id,
+          { title, description, price, modules, isPublished },
+          { new: true }
+        );
         return res.json(updated);
       } else {
-        // IF NO ID -> CREATE NEW COURSE
-        const newCourse = new Course({ title, description, price, modules, isPublished });
+        const newCourse = new Course({
+          title,
+          description,
+          price,
+          modules,
+          isPublished
+        });
         await newCourse.save();
         return res.json(newCourse);
       }
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
-  });
+  }
+);
 
+/**
+ * =========================================
+ * STUDENT — COMPLETE TOPIC
+ * =========================================
+ */
 router.post('/complete-topic', async (req, res) => {
   const { userId, courseId, topicId } = req.body;
 
@@ -74,7 +131,6 @@ router.post('/complete-topic', async (req, res) => {
       return res.status(404).json({ msg: "User not found" });
     }
 
-    // ✅ SAFE enrollment lookup
     const enrollment = user.enrolledCourses.find(
       e =>
         e.courseId &&
@@ -85,50 +141,37 @@ router.post('/complete-topic', async (req, res) => {
       return res.status(404).json({ msg: "Enrollment not found" });
     }
 
-    // ✅ Ensure completedTopics exists (SAFE for old users)
     if (!Array.isArray(enrollment.completedTopics)) {
       enrollment.completedTopics = [];
     }
 
-    // ✅ Add topic only once
     if (!enrollment.completedTopics.includes(topicId)) {
       enrollment.completedTopics.push(topicId);
     }
 
-
     const course = enrollment.courseId;
 
-    // 🔢 Count ONLY modules 1–5
     let totalCourseTopics = 0;
     course.modules.slice(0, 5).forEach(module => {
       totalCourseTopics += module.topics.length;
     });
 
-    // Count ONLY completed topics from modules 1–5
-    const completedCourseTopics = enrollment.completedTopics.filter(topicId => {
-      return course.modules
+    const completedCourseTopics = enrollment.completedTopics.filter(tid =>
+      course.modules
         .slice(0, 5)
-        .some(module =>
-          module.topics.some(t => t._id.toString() === topicId)
-        );
-    });
+        .some(m =>
+          m.topics.some(t => t._id.toString() === tid)
+        )
+    );
 
     if (
       completedCourseTopics.length >= totalCourseTopics &&
       !enrollment.courseCompleted
     ) {
       enrollment.courseCompleted = true;
-
-      // Issue course certificate
       enrollment.courseCertificateIssued = true;
-
-      // Issue offer letter
       enrollment.offerLetterIssued = true;
-
-      // 🚫 DO NOT unlock internship here
-      // Internship unlocks ONLY after AICTE verification
     }
-
 
     await user.save();
 
@@ -140,11 +183,32 @@ router.post('/complete-topic', async (req, res) => {
       certificateIssued: enrollment.courseCertificateIssued
     });
   } catch (err) {
-    console.error("Complete Topic Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
+/**
+ * =========================================
+ * ADMIN — DELETE COURSE
+ * =========================================
+ */
+router.delete(
+  '/:id',
+  adminAuth,
+  requireRole(['super_admin', 'course_admin']),
+  async (req, res) => {
+    try {
+      const course = await Course.findById(req.params.id);
+      if (!course) {
+        return res.status(404).json({ message: 'Course not found' });
+      }
 
+      await course.deleteOne();
+      res.json({ message: 'Course deleted successfully' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 module.exports = router;

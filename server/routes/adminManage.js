@@ -1,11 +1,15 @@
 const express = require('express');
 const router = express.Router();
+const Course = require('../models/Course');
+
 
 const Admin = require('../models/Admin');
 const AicteInternship = require('../models/AicteInternship');
 
 const adminAuth = require('../middleware/adminAuth');
-const adminRole = require('../middleware/adminRole');
+
+const requireRole = require('../middleware/adminRole');
+
 const bcrypt = require('bcryptjs'); // add at top if not present
 
 /**
@@ -18,7 +22,7 @@ const bcrypt = require('bcryptjs'); // add at top if not present
 router.get(
   '/course-admins',
   adminAuth,
-  adminRole(['super_admin']),
+  requireRole(['super_admin']),
   async (req, res) => {
     const admins = await Admin.find({ role: 'course_admin' });
     res.json(admins);
@@ -29,7 +33,7 @@ router.get(
 router.post(
   '/create-course-admin',
   adminAuth,
-  adminRole(['super_admin']),
+  requireRole(['super_admin']),
   async (req, res) => {
     const { email, password } = req.body;
 
@@ -42,7 +46,7 @@ router.post(
       return res.status(400).json({ error: 'Admin already exists' });
     }
 
-    
+
 
     const normalizedEmail = email.toLowerCase().trim();
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -64,7 +68,7 @@ router.post(
 router.put(
   '/toggle-course-admin/:id',
   adminAuth,
-  adminRole(['super_admin']),
+  requireRole(['super_admin']),
   async (req, res) => {
     const admin = await Admin.findById(req.params.id);
 
@@ -87,7 +91,7 @@ router.put(
 router.post(
   '/aicte/add',
   adminAuth,
-  adminRole(['super_admin', 'course_admin']),
+ requireRole( ['super_admin', 'course_admin']),
   async (req, res) => {
     try {
       const { email, courseId, aicteInternshipId } = req.body;
@@ -145,7 +149,7 @@ router.post(
 router.get(
   '/aicte',
   adminAuth,
-  adminRole(['super_admin', 'course_admin']),
+  requireRole(['super_admin', 'course_admin']),
   async (req, res) => {
     const records = await AicteInternship.find()
       .populate('courseId', 'title')
@@ -163,6 +167,25 @@ router.get(
     }));
 
     res.json(formatted);
+  }
+);
+// DELETE COURSE (Allow super_admin & course_admin)
+router.delete(
+  '/course/:id',
+  adminAuth,
+  requireRole(['super_admin', 'course_admin']),
+  async (req, res) => {
+    try {
+      const deleted = await Course.findByIdAndDelete(req.params.id);
+
+      if (!deleted) {
+        return res.status(404).json({ message: 'Course not found' });
+      }
+
+      res.json({ success: true, message: 'Course deleted permanently' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   }
 );
 
