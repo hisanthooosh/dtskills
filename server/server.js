@@ -48,6 +48,8 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/internship', internshipRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/certificates', certificateRoutes);
+app.use('/verify', require('./routes/verify'));
+
 
 // --- SUPER ADMIN ROUTE: GET ALL STUDENTS ---
 app.get(

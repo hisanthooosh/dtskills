@@ -20,6 +20,8 @@ import AdminLogin from './pages/AdminLogin';
 
 import AdminManageAdmins from './pages/AdminManageAdmins';
 import SubmitAicteId from './pages/SubmitAicteId';
+import VerifyCertificate from './pages/VerifyCertificate';
+
 
 
 
@@ -77,6 +79,8 @@ function App() {
 
 
         {/* COURSE ADMIN */}
+        <Route path="/verify/:certificateId" element={<VerifyCertificate />} />
+
 
       </Routes>
     </Router>

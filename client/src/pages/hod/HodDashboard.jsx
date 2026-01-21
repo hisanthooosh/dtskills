@@ -51,14 +51,22 @@ const HodDashboard = () => {
 
   const processStudents = (data, dept) => {
     const list = [];
-    const targetCourse = data.courses.find(c => c.courseName === dept);
+    const targetCourse = data.courses.find(
+      c => c.courseName.trim().toLowerCase() === dept.trim().toLowerCase()
+    );
+    if (!targetCourse) {
+      console.warn('Course not found for dept:', dept);
+      return;
+    }
+
+
     if (!targetCourse) return;
 
     targetCourse.rollNumbers.forEach(roll => {
       if (!roll.isRegistered || !roll.studentId) return;
 
       const enrollment = roll.studentId.enrolledCourses?.[0] || {};
-      const course = enrollment.courseId || {};
+
 
       // Internship status
       let internshipStatus = 'Locked';
@@ -70,15 +78,17 @@ const HodDashboard = () => {
 
       list.push({
         // STUDENT
-        _id: roll.studentId._id, 
+        _id: roll.studentId._id,
         name: roll.studentId.username,
         email: roll.studentId.email,
         rollNo: roll.number,
         department: dept,
         college: data.name,
+        companyName: 'Doneswari Technologies LLP',
 
         // COURSE
-        courseName: course.title || 'N/A',
+        courseName: targetCourse.courseName,
+
         courseStatus: enrollment.courseCompleted ? 'Completed' : 'In Progress',
 
         // INTERNSHIP
@@ -95,7 +105,21 @@ const HodDashboard = () => {
         internshipCertificate: enrollment.internshipCertificateIssued
           ? 'Yes'
           : 'No',
-        githubRepo: enrollment.internshipGithubRepo || '—'
+        githubRepo: enrollment.internshipGithubRepo || '—',
+        courseCertificateIssued: enrollment.courseCertificateIssued || false,
+        internshipCertificateIssued: enrollment.internshipCertificateIssued || false,
+        courseCertLink: enrollment.courseCertificateIssued
+          ? `${import.meta.env.VITE_API_BASE_URL}/certificates/course/${roll.studentId._id}`
+          : '',
+
+        offerLetterLink: enrollment.offerLetterIssued
+          ? `${import.meta.env.VITE_API_BASE_URL}/certificates/offer-letter/${roll.studentId._id}`
+          : '',
+
+        internshipCertLink: enrollment.internshipCertificateIssued
+          ? `${import.meta.env.VITE_API_BASE_URL}/certificates/internship/${roll.studentId._id}`
+          : '',
+
       });
     });
 
@@ -118,24 +142,42 @@ const HodDashboard = () => {
         Email: s.email,
         Roll: s.rollNo,
         Course: s.courseName,
-        Status: s.courseStatus
+        Company: s.companyName,
+        Status: s.courseStatus,
+        CourseCertificateStatus: s.courseCertificateIssued ? 'Issued' : 'Pending',
+        CourseCertificateLink: s.courseCertificateIssued
+          ? s.courseCertLink
+          : ''
       }))
       : view === 'internship'
         ? students.map(s => ({
           Name: s.name,
           Email: s.email,
           Roll: s.rollNo,
+          Course: s.courseName,
+          Company: s.companyName,
           InternshipStatus: s.internshipStatus,
           StartDate: s.internshipStart,
           EndDate: s.internshipEnd,
           Duration: s.internshipDuration,
-          Certificate: s.internshipCertificate
+          InternshipCertificateStatus: s.internshipCertificateIssued ? 'Issued' : 'Pending',
+          InternshipCertificateLink: s.internshipCertificateIssued
+            ? s.internshipCertLink
+            : ''
         }))
         : students.map(s => ({
           Name: s.name,
           Roll: s.rollNo,
-          Email: s.email
+          Email: s.email,
+
+          CourseCertificateStatus: s.courseCertificateIssued ? 'Issued' : 'Pending',
+          CourseCertificateLink: s.courseCertLink || '',
+
+          InternshipCertificateStatus: s.internshipCertificateIssued ? 'Issued' : 'Pending',
+          InternshipCertificateLink: s.internshipCertLink || ''
         }));
+
+
 
 
   return (
@@ -215,22 +257,34 @@ const HodDashboard = () => {
               {view === 'course' && (
                 <>
                   <th className="p-3">Course</th>
+                  <th className="p-3">Company</th>
                   <th className="p-3">Status</th>
+                  <th className="p-3">Certificate</th>
                 </>
               )}
 
+
               {view === 'internship' && (
                 <>
+                  <th className="p-3">Course</th>
+                  <th className="p-3">Company</th>
                   <th className="p-3">Status</th>
                   <th className="p-3">Start</th>
                   <th className="p-3">End</th>
                   <th className="p-3">Duration</th>
+                  <th className="p-3">Certificate</th>
                 </>
               )}
 
+
               {view === 'students' && (
-                <th className="p-3">Action</th>
+                <>
+                  <th className="p-3">Course Cert</th>
+                  <th className="p-3">Internship Cert</th>
+                  <th className="p-3">Action</th>
+                </>
               )}
+
 
             </tr>
           </thead>
@@ -247,37 +301,108 @@ const HodDashboard = () => {
 
                 <td className="p-3">{s.rollNo}</td>
                 {view === 'students' && (
+                  <>
+                    {/* COURSE CERTIFICATE */}
+                    <td className="p-3 text-xs">
+                      {s.courseCertificateIssued ? (
+                        <>
+                          <div className="text-green-600 font-bold">Issued</div>
+                          <a
+                            href={s.courseCertLink}
+                            target="_blank"
+                            className="text-blue-600 underline"
+                          >
+                            View
+                          </a>
+                        </>
+                      ) : (
+                        <span className="text-slate-400">Pending</span>
+                      )}
+                    </td>
 
-                  <td className="p-3">
+                    {/* INTERNSHIP CERTIFICATE */}
+                    <td className="p-3 text-xs">
+                      {s.internshipCertificateIssued ? (
+                        <>
+                          <div className="text-green-600 font-bold">Issued</div>
+                          <a
+                            href={s.internshipCertLink}
+                            target="_blank"
+                            className="text-blue-600 underline"
+                          >
+                            View
+                          </a>
+                        </>
+                      ) : (
+                        <span className="text-slate-400">Pending</span>
+                      )}
+                    </td>
 
-                    <button
-                      onClick={() => {
-                        setSelectedStudent(s);
-                        setShowResetModal(true);
-                      }}
-                      className="bg-blue-600 text-white px-3 py-1 rounded-md text-xs font-bold"
-                    >
-                      Reset Password
-                    </button>
-                  </td>
+                    {/* ACTION */}
+                    <td className="p-3">
+                      <button
+                        onClick={() => {
+                          setSelectedStudent(s);
+                          setShowResetModal(true);
+                        }}
+                        className="bg-blue-600 text-white px-3 py-1 rounded-md text-xs font-bold"
+                      >
+                        Reset Password
+                      </button>
+                    </td>
+                  </>
                 )}
+
 
 
                 {view === 'course' && (
                   <>
                     <td className="p-3">{s.courseName}</td>
+                    <td className="p-3">{s.companyName}</td>
                     <td className="p-3">{s.courseStatus}</td>
+
+                    <td className="p-3 text-xs">
+                      {s.courseCertificateIssued ? (
+                        <a
+                          href={s.courseCertLink}
+                          target="_blank"
+                          className="text-blue-600 underline font-bold"
+                        >
+                          View
+                        </a>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
                   </>
                 )}
 
+
                 {view === 'internship' && (
                   <>
+                    <td className="p-3">{s.courseName}</td>
+                    <td className="p-3">{s.companyName}</td>
                     <td className="p-3 font-bold">{s.internshipStatus}</td>
                     <td className="p-3">{s.internshipStart}</td>
                     <td className="p-3">{s.internshipEnd}</td>
                     <td className="p-3">{s.internshipDuration}</td>
+
+                    <td className="p-3 text-xs">
+                      {s.internshipCertificateIssued ? (
+                        <a
+                          href={s.internshipCertLink}
+                          target="_blank"
+                          className="text-blue-600 underline font-bold"
+                        >
+                          View
+                        </a>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
                   </>
                 )}
+
 
                 {/* students → no extra cells */}
               </tr>

@@ -90,7 +90,16 @@ const EnrolledCourseSchema = new mongoose.Schema({
   enrolledAt: {
     type: Date,
     default: Date.now
+  },
+  certificateId: {
+    type: String,
+    default: null
+  },
+  certificateIssuedAt: {
+    type: Date,
+    default: null
   }
+
 });
 
 const UserSchema = new mongoose.Schema(

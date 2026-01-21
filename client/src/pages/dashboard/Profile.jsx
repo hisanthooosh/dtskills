@@ -14,7 +14,8 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
 
   // Preview modal
-  const [previewDoc, setPreviewDoc] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -23,7 +24,7 @@ export default function Profile() {
         if (!local?._id) return;
 
         const res = await fetch(
-         `${import.meta.env.VITE_API_BASE_URL}/student/${local._id}`
+          `${import.meta.env.VITE_API_BASE_URL}/student/${local._id}`
 
         );
         const data = await res.json();
@@ -128,11 +129,11 @@ export default function Profile() {
             icon={Award}
             active={courseCert}
             onPreview={() =>
-              window.open(
-                `${import.meta.env.VITE_API_BASE_URL}/certificates/course/${student._id}`,
-                '_blank'
+              setPreviewUrl(
+                `${import.meta.env.VITE_API_BASE_URL}/certificates/course/${student._id}`
               )
             }
+
             onDownload={() =>
               window.open(
                 `${import.meta.env.VITE_API_BASE_URL}/certificates/course/${student._id}?download=true`,
@@ -147,11 +148,11 @@ export default function Profile() {
             icon={FileText}
             active={offerLetter}
             onPreview={() =>
-              window.open(
-                `${import.meta.env.VITE_API_BASE_URL}/certificates/offer-letter/${student._id}`,
-                '_blank'
+              setPreviewUrl(
+                `${import.meta.env.VITE_API_BASE_URL}/certificates/offer-letter/${student._id}`
               )
             }
+
             onDownload={() =>
               window.open(
                 `${import.meta.env.VITE_API_BASE_URL}/certificates/offer-letter/${student._id}?download=true`,
@@ -183,11 +184,11 @@ export default function Profile() {
               ) : null
             }
             onPreview={() =>
-              window.open(
-                `${import.meta.env.VITE_API_BASE_URL}/certificates/internship/${student._id}`,
-                '_blank'
+              setPreviewUrl(
+                `${import.meta.env.VITE_API_BASE_URL}/certificates/internship/${student._id}`
               )
             }
+
             onDownload={() =>
               window.open(
                 `${import.meta.env.VITE_API_BASE_URL}/certificates/internship/${student._id}?download=true`,
@@ -231,12 +232,26 @@ export default function Profile() {
       )}
 
       {/* ================= PREVIEW MODAL ================= */}
-      {previewDoc && (
-        <PreviewModal
-          title={previewDoc}
-          onClose={() => setPreviewDoc(null)}
-        />
+      {previewUrl && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl w-[90%] max-w-4xl h-[85%] relative shadow-xl">
+
+            <button
+              onClick={() => setPreviewUrl(null)}
+              className="absolute top-3 right-3 bg-black text-white px-3 py-1 rounded text-sm"
+            >
+              ✕ Close
+            </button>
+
+            <iframe
+              src={previewUrl}
+              title="Certificate Preview"
+              className="w-full h-full rounded-2xl"
+            />
+          </div>
+        </div>
       )}
+
     </div>
   );
 }
@@ -270,8 +285,8 @@ function CertificateCard({
       <div className="flex items-center gap-3 mb-4">
         <div
           className={`w-12 h-12 rounded-xl flex items-center justify-center ${active
-              ? 'bg-green-100 text-green-600'
-              : 'bg-slate-100 text-slate-400'
+            ? 'bg-green-100 text-green-600'
+            : 'bg-slate-100 text-slate-400'
             }`}
         >
           <Icon size={22} />
