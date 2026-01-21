@@ -75,6 +75,7 @@ const HodDashboard = () => {
           ? 'Completed'
           : 'Ongoing';
       }
+      const enrolledCourse = enrollment.courseId || {};
 
       list.push({
         // STUDENT
@@ -87,7 +88,10 @@ const HodDashboard = () => {
         companyName: 'Doneswari Technologies LLP',
 
         // COURSE
-        courseName: targetCourse.courseName,
+
+
+        courseName: enrolledCourse.title || targetCourse.courseName,
+
 
         courseStatus: enrollment.courseCompleted ? 'Completed' : 'In Progress',
 

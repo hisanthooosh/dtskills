@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 // --- HELPER FUNCTION: Generate Roll Numbers ---
 const generateRollNumbers = (start, end) => {
   const rollList = [];
-  
+
   // Extract numeric part from end (e.g., "24102d020001" -> prefix: "24102d02", number: "0001")
   const matchStart = start.match(/(\D*)(\d+)$/);
   const matchEnd = end.match(/(\D*)(\d+)$/);
@@ -36,11 +36,11 @@ exports.addCollege = async (req, res) => {
 
     // Check if duplicate
     const existing = await College.findOne({ name });
-    if(existing) return res.status(400).json({ error: "College already exists" });
+    if (existing) return res.status(400).json({ error: "College already exists" });
 
     const newCollege = new College({ name });
     await newCollege.save();
-    
+
     res.status(201).json(newCollege);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -82,10 +82,10 @@ exports.addCourseToCollege = async (req, res) => {
     });
 
     await college.save();
-    
-    res.status(200).json({ 
-      message: `Added ${courseName} with ${generatedRolls.length} seats. HOD Assigned: ${hodEmail}`, 
-      college 
+
+    res.status(200).json({
+      message: `Added ${courseName} with ${generatedRolls.length} seats. HOD Assigned: ${hodEmail}`,
+      college
     });
 
   } catch (err) {
@@ -119,7 +119,7 @@ exports.updateCollege = async (req, res) => {
 exports.updateCourse = async (req, res) => {
   try {
     const { collegeId, courseId, newName } = req.body;
-    
+
     const result = await College.updateOne(
       { "_id": collegeId, "courses._id": courseId },
       { $set: { "courses.$.courseName": newName } }
@@ -142,7 +142,7 @@ exports.loginHod = async (req, res) => {
 
     // A. Find the college containing this HOD email in ANY of its courses
     const college = await College.findOne({ "courses.hodEmail": email });
-    
+
     if (!college) {
       return res.status(404).json({ message: "HOD Email not found in any college." });
     }
@@ -161,9 +161,9 @@ exports.loginHod = async (req, res) => {
     }
 
     // D. Return success with Dept Info
-    res.status(200).json({ 
-      message: "Login successful", 
-      collegeId: college._id, 
+    res.status(200).json({
+      message: "Login successful",
+      collegeId: college._id,
       collegeName: college.name,
       deptName: department.courseName, // 👈 Important: Return Dept Name
       deptId: department._id
@@ -175,23 +175,22 @@ exports.loginHod = async (req, res) => {
   }
 };
 
-// 7. Get Single College Details (with populated students)
 exports.getCollegeDetails = async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    // Populate student details inside the deeply nested array
-    const college = await College.findById(id).populate({
-      path: 'courses.rollNumbers.studentId', 
-      model: 'User',
-      select: 'username email enrolledCourses faceDescriptor' // Only get needed fields
-    });
-    
-    if (!college) return res.status(404).json({ error: "College not found" });
-    
-    res.status(200).json(college);
+    const college = await College.findById(req.params.id)
+      .populate({
+        path: 'courses.rollNumbers.studentId',
+        populate: {
+          path: 'enrolledCourses.courseId',
+          model: 'Course',
+          strictPopulate: false
+        }
+      });
+
+    res.json(college);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('getCollegeDetails error:', err);
+    res.status(500).json({ message: 'Failed to fetch college details' });
   }
 };
 
