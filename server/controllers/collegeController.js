@@ -194,3 +194,67 @@ exports.getCollegeDetails = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// 8. 🔐 HOD — Reset Student Password (Simple & Trusted)
+exports.resetStudentPassword = async (req, res) => {
+  try {
+    const { studentId, newPassword, collegeId, dept } = req.body;
+
+    if (!studentId || !newPassword || !collegeId || !dept) {
+      return res.status(400).json({
+        message: 'studentId, newPassword, collegeId and dept are required'
+      });
+    }
+
+    // 1️⃣ Find student
+    const student = await require('../models/User').findById(studentId);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // 2️⃣ Check student belongs to same college
+    if (student.collegeId.toString() !== collegeId) {
+      return res.status(403).json({
+        message: 'Student does not belong to your college'
+      });
+    }
+
+    // 3️⃣ Verify student belongs to HOD department
+    const college = await require('../models/College').findById(collegeId);
+    const department = college.courses.find(c => c.courseName === dept);
+
+    if (!department) {
+      return res.status(403).json({
+        message: 'Department not found'
+      });
+    }
+
+    const rollEntry = department.rollNumbers.find(
+      r => r.studentId?.toString() === studentId
+    );
+
+    if (!rollEntry) {
+      return res.status(403).json({
+        message: 'Student does not belong to your department'
+      });
+    }
+
+    // 4️⃣ Hash new password
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 5️⃣ Update password
+    student.password = hashedPassword;
+    await student.save();
+
+    res.status(200).json({
+      message: 'Password updated successfully'
+    });
+
+  } catch (err) {
+    console.error('Reset Password Error:', err);
+    res.status(500).json({
+      message: 'Failed to reset password'
+    });
+  }
+};

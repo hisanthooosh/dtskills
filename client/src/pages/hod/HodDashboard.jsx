@@ -14,11 +14,19 @@ import { useNavigate } from 'react-router-dom';
 const HodDashboard = () => {
   const [collegeData, setCollegeData] = useState(null);
   const [students, setStudents] = useState([]);
-  const [view, setView] = useState('course'); // course | internship
+  const [view, setView] = useState('course'); // course | internship | students
+
   const navigate = useNavigate();
 
   const hodDept = localStorage.getItem('hodDept');
   const hodCollegeId = localStorage.getItem('hodCollegeId');
+
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
 
   useEffect(() => {
     if (!hodCollegeId || !hodDept) {
@@ -62,6 +70,7 @@ const HodDashboard = () => {
 
       list.push({
         // STUDENT
+        _id: roll.studentId._id, 
         name: roll.studentId.username,
         email: roll.studentId.email,
         rollNo: roll.number,
@@ -105,13 +114,14 @@ const HodDashboard = () => {
   const csvData =
     view === 'course'
       ? students.map(s => ({
-          Name: s.name,
-          Email: s.email,
-          Roll: s.rollNo,
-          Course: s.courseName,
-          Status: s.courseStatus
-        }))
-      : students.map(s => ({
+        Name: s.name,
+        Email: s.email,
+        Roll: s.rollNo,
+        Course: s.courseName,
+        Status: s.courseStatus
+      }))
+      : view === 'internship'
+        ? students.map(s => ({
           Name: s.name,
           Email: s.email,
           Roll: s.rollNo,
@@ -120,7 +130,13 @@ const HodDashboard = () => {
           EndDate: s.internshipEnd,
           Duration: s.internshipDuration,
           Certificate: s.internshipCertificate
+        }))
+        : students.map(s => ({
+          Name: s.name,
+          Roll: s.rollNo,
+          Email: s.email
         }));
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -153,29 +169,39 @@ const HodDashboard = () => {
         </div>
       </header>
 
-      {/* VIEW SWITCH */}
       <div className="flex gap-4 mb-6">
         <button
           onClick={() => setView('course')}
-          className={`px-4 py-2 rounded-lg font-bold ${
-            view === 'course'
-              ? 'bg-blue-600 text-white'
-              : 'bg-white border'
-          }`}
+          className={`px-4 py-2 rounded-lg font-bold ${view === 'course'
+            ? 'bg-blue-600 text-white'
+            : 'bg-white border'
+            }`}
         >
           Courses
         </button>
+
         <button
           onClick={() => setView('internship')}
-          className={`px-4 py-2 rounded-lg font-bold ${
-            view === 'internship'
-              ? 'bg-blue-600 text-white'
-              : 'bg-white border'
-          }`}
+          className={`px-4 py-2 rounded-lg font-bold ${view === 'internship'
+            ? 'bg-blue-600 text-white'
+            : 'bg-white border'
+            }`}
         >
           Internship
         </button>
+
+        {/* ✅ NEW TAB */}
+        <button
+          onClick={() => setView('students')}
+          className={`px-4 py-2 rounded-lg font-bold ${view === 'students'
+            ? 'bg-blue-600 text-white'
+            : 'bg-white border'
+            }`}
+        >
+          Students
+        </button>
       </div>
+
 
       {/* TABLE */}
       <div className="bg-white rounded-xl shadow overflow-x-auto">
@@ -186,12 +212,14 @@ const HodDashboard = () => {
               <th className="p-3">Email</th>
               <th className="p-3">Roll</th>
 
-              {view === 'course' ? (
+              {view === 'course' && (
                 <>
                   <th className="p-3">Course</th>
                   <th className="p-3">Status</th>
                 </>
-              ) : (
+              )}
+
+              {view === 'internship' && (
                 <>
                   <th className="p-3">Status</th>
                   <th className="p-3">Start</th>
@@ -199,24 +227,50 @@ const HodDashboard = () => {
                   <th className="p-3">Duration</th>
                 </>
               )}
+
+              {view === 'students' && (
+                <th className="p-3">Action</th>
+              )}
+
             </tr>
           </thead>
+
 
           <tbody className="divide-y">
             {students.map((s, i) => (
               <tr key={i}>
                 <td className="p-3">{s.name}</td>
+
                 <td className="p-3 flex items-center gap-1">
                   <Mail size={12} /> {s.email}
                 </td>
-                <td className="p-3">{s.rollNo}</td>
 
-                {view === 'course' ? (
+                <td className="p-3">{s.rollNo}</td>
+                {view === 'students' && (
+
+                  <td className="p-3">
+
+                    <button
+                      onClick={() => {
+                        setSelectedStudent(s);
+                        setShowResetModal(true);
+                      }}
+                      className="bg-blue-600 text-white px-3 py-1 rounded-md text-xs font-bold"
+                    >
+                      Reset Password
+                    </button>
+                  </td>
+                )}
+
+
+                {view === 'course' && (
                   <>
                     <td className="p-3">{s.courseName}</td>
                     <td className="p-3">{s.courseStatus}</td>
                   </>
-                ) : (
+                )}
+
+                {view === 'internship' && (
                   <>
                     <td className="p-3 font-bold">{s.internshipStatus}</td>
                     <td className="p-3">{s.internshipStart}</td>
@@ -224,13 +278,108 @@ const HodDashboard = () => {
                     <td className="p-3">{s.internshipDuration}</td>
                   </>
                 )}
+
+                {/* students → no extra cells */}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {showResetModal && selectedStudent && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-md rounded-xl p-6 shadow-lg">
+
+            <h2 className="text-xl font-bold mb-4">
+              Reset Password
+            </h2>
+
+            <div className="mb-3 text-sm">
+              <p><b>Name:</b> {selectedStudent.name}</p>
+              <p><b>Email:</b> {selectedStudent.email}</p>
+              <p><b>Roll:</b> {selectedStudent.rollNo}</p>
+            </div>
+
+            <input
+              type="password"
+              placeholder="New Password"
+              className="w-full border p-2 rounded mb-3"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+
+            <input
+              type="password"
+              placeholder="Confirm Password"
+              className="w-full border p-2 rounded mb-4"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowResetModal(false);
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}
+                className="px-4 py-2 border rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                disabled={loading}
+                onClick={async () => {
+                  if (!newPassword || !confirmPassword) {
+                    alert('Please fill all fields');
+                    return;
+                  }
+
+                  if (newPassword !== confirmPassword) {
+                    alert('Passwords do not match');
+                    return;
+                  }
+
+                  try {
+                    setLoading(true);
+
+                    await axios.post(
+                      `${import.meta.env.VITE_API_BASE_URL}/college/reset-student-password`,
+                      {
+                        studentId: selectedStudent._id,
+                        newPassword,
+                        collegeId: hodCollegeId,
+                        dept: hodDept
+                      }
+                    );
+
+                    alert('Password updated successfully');
+
+                    setShowResetModal(false);
+                    setNewPassword('');
+                    setConfirmPassword('');
+
+                  } catch (err) {
+                    console.error(err);
+                    alert(err.response?.data?.message || 'Failed to reset password');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded font-bold"
+              >
+                {loading ? 'Updating...' : 'Update'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
+
   );
 };
+
 
 export default HodDashboard;

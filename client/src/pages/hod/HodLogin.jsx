@@ -15,9 +15,10 @@ const HodLogin = () => {
 
     try {
       const res = await axios.post(
-        '${import.meta.env.VITE_API_BASE_URL}/college/login',
+        `${import.meta.env.VITE_API_BASE_URL}/college/login`,
         { email, password }
       );
+
 
       localStorage.setItem('hodCollegeId', res.data.collegeId);
       localStorage.setItem('hodCollegeName', res.data.collegeName);
