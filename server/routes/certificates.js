@@ -1,6 +1,7 @@
 const express = require('express');
 const User = require('../models/User');
-const { generateCertificate } = require('../utils/pdfGenerator');
+const { generatePDF } = require('../utils/pdfGenerator');
+
 
 const router = express.Router();
 
@@ -36,7 +37,8 @@ router.get('/:type/:userId', async (req, res) => {
     };
 
     // ================= PDF STREAM =================
-    const pdfDoc = await generateCertificate(certData);
+    const pdfDoc = await generatePDF(certData);
+
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
