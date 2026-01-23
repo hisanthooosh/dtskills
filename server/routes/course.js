@@ -33,29 +33,69 @@ router.get(
  */
 router.get('/', async (req, res) => {
   try {
-    const courses = await Course.find({ status: 'published' });
-    res.json(courses);
+    const courses = await Course.find({ status: 'published' }).lean();
+
+    // 🔥 NORMALIZE QUIZ DATA FOR ALL COURSES
+    const normalizedCourses = courses.map(course => ({
+      ...course,
+      modules: (course.modules || []).map(module => ({
+        ...module,
+        topics: (module.topics || []).map(topic => ({
+          ...topic,
+          quiz: Array.isArray(topic.quiz)
+            ? topic.quiz
+            : Array.isArray(topic.quizzes)
+              ? topic.quizzes
+              : []
+        }))
+      }))
+    }));
+
+    res.json(normalizedCourses);
   } catch (err) {
+    console.error('GET /courses error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 
-/**
- * =========================================
- * PUBLIC — GET SINGLE COURSE
- * ⚠️ MUST BE LAST (VERY IMPORTANT)
- * =========================================
- */
+// @route   GET api/courses/:id
+// @desc    Get course by ID
+// @access  Public
 router.get('/:id', async (req, res) => {
   try {
-    const course = await Course.findById(req.params.id);
+    // 1. Use .lean() so we can modify the object before sending it
+    const course = await Course.findById(req.params.id).lean();
+
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      return res.status(404).json({ msg: 'Course not found' });
     }
+
+    // 2. FIX: Normalize 'quiz' vs 'quizzes' fields safely
+    if (course.modules) {
+      course.modules.forEach(module => {
+        if (module.topics) {
+          module.topics.forEach(topic => {
+            // Check if the NEW field 'quiz' exists and actually has questions
+            const hasNewQuiz = Array.isArray(topic.quiz) && topic.quiz.length > 0;
+
+            // Check if the OLD field 'quizzes' exists and actually has questions
+            const hasLegacyQuiz = Array.isArray(topic.quizzes) && topic.quizzes.length > 0;
+
+            // Priority: Use new 'quiz' if valid -> otherwise fallback to 'quizzes' -> otherwise empty []
+            topic.quiz = hasNewQuiz ? topic.quiz : (hasLegacyQuiz ? topic.quizzes : []);
+          });
+        }
+      });
+    }
+
     res.json(course);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err.message);
+    if (err.kind === 'ObjectId') {
+      return res.status(404).json({ msg: 'Course not found' });
+    }
+    res.status(500).send('Server Error');
   }
 });
 

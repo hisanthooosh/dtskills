@@ -200,13 +200,33 @@ const Classroom = () => {
   const getTopicData = (topic) => {
     if (!topic) return {};
 
+    // 1. Handle Video
     let videos = [];
     if (topic.youtubeLinks && topic.youtubeLinks.length > 0) {
       videos = topic.youtubeLinks;
     } else if (topic.video) {
       videos = [{ title: "Video Lesson", url: topic.video }];
     }
-    const quizzes = Array.isArray(topic.quizzes) ? topic.quizzes : [];
+
+    // 2. Handle Quiz (The Fix)
+    // First, try to get data from EITHER field
+    let rawQuizData = [];
+
+    if (Array.isArray(topic.quiz) && topic.quiz.length > 0) {
+      // Priority 1: New Schema
+      rawQuizData = topic.quiz;
+    } else if (Array.isArray(topic.quizzes) && topic.quizzes.length > 0) {
+      // Priority 2: Legacy Schema (Fallback)
+      rawQuizData = topic.quizzes;
+    }
+
+    // Filter valid questions to prevent empty questions from breaking the UI
+    const quizzes = rawQuizData.filter(q =>
+      q &&
+      q.question &&
+      typeof q.question === 'string' &&
+      q.question.trim().length > 0
+    );
 
     const text = topic.textContent || topic.content || "";
 
@@ -485,9 +505,33 @@ const Classroom = () => {
                     )}
                   </div>
                   <div className="flex justify-end pt-6 border-t border-slate-100">
-                    <button onClick={() => setCurrentStep('quiz')} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-200">
-                      Take Quiz <ChevronRight size={20} />
+                    <button
+                      disabled={!Array.isArray(activeData.quizzes) || activeData.quizzes.length === 0}
+                      onClick={() => setCurrentStep('quiz')}
+                      className={`
+    group flex items-center gap-2 px-8 py-3 rounded-xl font-bold
+    transition-all duration-300 ease-out
+    ${Array.isArray(activeData.quizzes) && activeData.quizzes.length > 0
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 hover:scale-[1.02]'
+                          : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        }
+  `}
+                    >
+                      <span>Take Quiz</span>
+
+                      <ChevronRight
+                        size={20}
+                        className={`
+      transition-transform duration-300
+      ${Array.isArray(activeData.quizzes) && activeData.quizzes.length > 0
+                            ? 'group-hover:translate-x-1'
+                            : ''
+                          }
+    `}
+                      />
                     </button>
+
+
                   </div>
                 </div>
               )}
@@ -573,7 +617,8 @@ const Classroom = () => {
 // --- SUB-COMPONENTS ---
 
 const StepIndicator = ({ step, current, label, icon: Icon }) => {
-  const steps = ['reading', 'watching', 'quiz'];
+  const steps = ['reading', 'quiz'];
+
   const currentIndex = steps.indexOf(current);
   const stepIndex = steps.indexOf(step);
   const isCompleted = currentIndex > stepIndex;

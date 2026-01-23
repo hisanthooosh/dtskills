@@ -139,9 +139,13 @@ export default function AdminDashboard() {
         setPreviewTopic({
             title: t.title,
             content: t.content || t.textContent || '',
-            quizzes: Array.isArray(t.quizzes) ? t.quizzes : []
-
+            quiz: Array.isArray(t.quiz)
+                ? t.quiz
+                : Array.isArray(t.quizzes)
+                    ? t.quizzes
+                    : []
         });
+
 
         // 🔄 Always start from reading
         setPreviewStep('reading');
@@ -227,8 +231,13 @@ export default function AdminDashboard() {
             topics: (m.topics || []).map(t => ({
                 title: t.title,
                 textContent: t.textContent || '',
-                quizzes: t.quizzes || []
+                quiz: Array.isArray(t.quiz)
+                    ? t.quiz
+                    : Array.isArray(t.quizzes)
+                        ? t.quizzes
+                        : []
             }))
+
 
         }));
 
@@ -260,8 +269,9 @@ export default function AdminDashboard() {
         const topicToSave = {
             title: currentTopic.title,
             textContent: currentTopic.content,
-            quizzes: currentTopic.quizzes
+            quiz: currentTopic.quizzes   // 🔥 map correctly
         };
+
 
         if (editingTopic) {
             updatedModules[editingTopic.moduleIndex].topics[editingTopic.topicIndex] = topicToSave;
@@ -351,7 +361,8 @@ export default function AdminDashboard() {
         setCurrentTopic({
             title: t.title,
             content: t.content || t.textContent || '',
-            quizzes: t.quizzes || []
+            quizzes: t.quiz || t.quizzes || []
+
         });
 
         setSelectedModuleIndex(moduleIndex);
@@ -1053,11 +1064,12 @@ export default function AdminDashboard() {
                                                                     </span>
                                                                 )}
 
-                                                                {t.quizzes && t.quizzes.length > 0 && (
+                                                                {(t.quiz || t.quizzes)?.length > 0 && (
                                                                     <span className="flex items-center gap-1 text-green-700 bg-green-100 px-1.5 rounded font-medium">
-                                                                        <HelpCircle size={12} /> {t.quizzes.length} Questions
+                                                                        <HelpCircle size={12} /> {(t.quiz || t.quizzes).length} Questions
                                                                     </span>
                                                                 )}
+
                                                             </div>
                                                         </div>
 
@@ -1492,20 +1504,21 @@ export default function AdminDashboard() {
                                                         <ReactMarkdown>{previewTopic.content || "_No text content added yet._"}</ReactMarkdown>
                                                     </div>
                                                     {/* ✅ SMALL UX HINT (SAFE ADDITION) */}
-                                                    {previewTopic.quizzes && previewTopic.quizzes.length > 0 && (
+                                                    {previewTopic.quiz && previewTopic.quiz.length > 0 && (
                                                         <p className="text-sm text-slate-500 mb-6">
-                                                            📘 This topic has <b>{previewTopic.quizzes.length}</b> quiz questions after reading.
+                                                            📘 This topic has <b>{previewTopic.quiz.length}</b> quiz questions after reading.
                                                         </p>
                                                     )}
+
                                                     <div className="flex justify-end pt-6 border-t border-slate-100">
                                                         <button
-                                                            disabled={!previewTopic.quizzes || previewTopic.quizzes.length === 0}
+                                                            disabled={!previewTopic.quiz || previewTopic.quiz.length === 0}
                                                             onClick={() => setPreviewStep('quiz')}
-                                                            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold
-             disabled:opacity-40 disabled:cursor-not-allowed"
+                                                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                                         >
                                                             Proceed to Quiz <ChevronRight size={20} />
                                                         </button>
+
 
                                                     </div>
                                                 </div>
@@ -1516,12 +1529,13 @@ export default function AdminDashboard() {
                                             {/* STEP 3: QUIZ */}
                                             {previewStep === 'quiz' && (
                                                 <div className="animate-in slide-in-from-right duration-300">
-                                                    {previewTopic.quizzes && previewTopic.quizzes.length > 0 ? (
+                                                    {previewTopic.quiz && previewTopic.quiz.length > 0 ? (
                                                         <PreviewQuizInterface
-                                                            questions={previewTopic.quizzes}
+                                                            questions={previewTopic.quiz}
                                                             onBack={() => setPreviewStep('reading')}
                                                         />
                                                     ) : (
+
                                                         <div className="text-center py-10">
                                                             <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
                                                                 <Lock size={32} />
