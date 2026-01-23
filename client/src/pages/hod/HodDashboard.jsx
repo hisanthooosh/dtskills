@@ -164,6 +164,8 @@ const HodDashboard = () => {
           StartDate: s.internshipStart,
           EndDate: s.internshipEnd,
           Duration: s.internshipDuration,
+          RepoLink: s.githubRepo && s.githubRepo !== '—' ? s.githubRepo : '',
+
           InternshipCertificateStatus: s.internshipCertificateIssued ? 'Issued' : 'Pending',
           InternshipCertificateLink: s.internshipCertificateIssued
             ? s.internshipCertLink
@@ -276,6 +278,8 @@ const HodDashboard = () => {
                   <th className="p-3">Start</th>
                   <th className="p-3">End</th>
                   <th className="p-3">Duration</th>
+                  <th className="p-3">Repo</th>
+
                   <th className="p-3">Certificate</th>
                 </>
               )}
@@ -390,6 +394,20 @@ const HodDashboard = () => {
                     <td className="p-3">{s.internshipStart}</td>
                     <td className="p-3">{s.internshipEnd}</td>
                     <td className="p-3">{s.internshipDuration}</td>
+                    <td className="p-3 text-xs">
+                      {s.githubRepo && s.githubRepo !== '—' ? (
+                        <a
+                          href={s.githubRepo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline font-bold"
+                        >
+                          View Repo
+                        </a>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
 
                     <td className="p-3 text-xs">
                       {s.internshipCertificateIssued ? (
