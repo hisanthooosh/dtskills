@@ -60,6 +60,27 @@ const Classroom = () => {
       const enrollment = studentData.enrolledCourses?.find(
         (c) => c.courseId && (c.courseId._id == id || c.courseId == id)
       );
+      if (!enrollment || enrollment.isPaid !== true) {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <div className="bg-white p-8 rounded-xl shadow text-center max-w-md">
+              <h2 className="text-xl font-bold text-slate-800 mb-2">
+                Payment Required
+              </h2>
+              <p className="text-slate-500 mb-6">
+                Please purchase this course to access the classroom.
+              </p>
+              <button
+                onClick={() => navigate('/dashboard/catalog')}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold"
+              >
+                Go to Course Catalog
+              </button>
+            </div>
+          </div>
+        );
+      }
+
 
       // FIX: Default to empty array to prevent "undefined" errors
       const progressIds = enrollment?.completedTopics || [];

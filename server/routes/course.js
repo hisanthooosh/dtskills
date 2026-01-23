@@ -33,12 +33,13 @@ router.get(
  */
 router.get('/', async (req, res) => {
   try {
-    const courses = await Course.find();
+    const courses = await Course.find({ status: 'published' });
     res.json(courses);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 /**
  * =========================================
@@ -63,47 +64,60 @@ router.get('/:id', async (req, res) => {
  * ADMIN — CREATE / UPDATE COURSE (PUBLISH)
  * =========================================
  */
+
 router.post(
-  '/publish',
+  '/draft',
   adminAuth,
   requireRole(['super_admin', 'course_admin']),
   async (req, res) => {
     try {
-      const {
-        _id,
-        title,
-        description,
-        price,
-        modules,
-        isPublished,
-        adminSecret
-      } = req.body;
+      const course = new Course({
+        ...req.body,
+        status: 'draft',
+        isPublished: false
+      });
 
-      if (
-        adminSecret !== process.env.ADMIN_SECRET &&
-        adminSecret !== "doneswari_admin_2025"
-      ) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
+      await course.save();
+      res.json(course);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+router.put(
+  '/:id/draft',
+  adminAuth,
+  requireRole(['super_admin', 'course_admin']),
+  async (req, res) => {
+    try {
+      const course = await Course.findByIdAndUpdate(
+        req.params.id,
+        { ...req.body, status: 'draft', isPublished: false },
+        { new: true }
+      );
 
-      if (_id) {
-        const updated = await Course.findByIdAndUpdate(
-          _id,
-          { title, description, price, modules, isPublished },
-          { new: true }
-        );
-        return res.json(updated);
-      } else {
-        const newCourse = new Course({
-          title,
-          description,
-          price,
-          modules,
-          isPublished
-        });
-        await newCourse.save();
-        return res.json(newCourse);
-      }
+      res.json(course);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+router.put(
+  '/:id/publish',
+  adminAuth,
+  requireRole(['super_admin', 'course_admin']),
+  async (req, res) => {
+    try {
+      const course = await Course.findByIdAndUpdate(
+        req.params.id,
+        {
+          status: 'published',
+          isPublished: true
+        },
+        { new: true }
+      );
+
+      res.json(course);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

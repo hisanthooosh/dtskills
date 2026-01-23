@@ -22,6 +22,11 @@ import AdminManageAdmins from './pages/AdminManageAdmins';
 import SubmitAicteId from './pages/SubmitAicteId';
 import VerifyCertificate from './pages/VerifyCertificate';
 
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import Terms from './pages/Terms';
+import RefundPolicy from './pages/RefundPolicy';
+import Contact from './pages/Contact';
+
 
 
 
@@ -76,6 +81,10 @@ function App() {
             </AdminProtectedRoute>
           }
         />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-and-conditions" element={<Terms />} />
+        <Route path="/refund-policy" element={<RefundPolicy />} />
+        <Route path="/contact-us" element={<Contact />} />
 
 
         {/* COURSE ADMIN */}

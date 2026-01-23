@@ -13,7 +13,7 @@ const topicSchema = new mongoose.Schema({
     title: String,
     url: String
   }],
-  quiz: [quizSchema], 
+  quiz: [quizSchema],
 });
 
 const moduleSchema = new mongoose.Schema({
@@ -27,6 +27,12 @@ const courseSchema = new mongoose.Schema({
   thumbnail: String,
   price: Number,
   isPublished: { type: Boolean, default: false },
+  status: {
+    type: String,
+    enum: ['draft', 'published'],
+    default: 'draft'
+  },
+
   modules: [moduleSchema],
   college: { type: mongoose.Schema.Types.ObjectId, ref: 'College' }
 }, { timestamps: true });

@@ -327,7 +327,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* --- ADVANCED FOOTER --- */}
+      {/* --- UPDATED FOOTER (COMPLIANCE READY) --- */}
       <footer className="bg-slate-950 text-slate-300 border-t border-slate-900 font-sans">
 
         {/* Main Footer Content */}
@@ -337,88 +337,120 @@ const LandingPage = () => {
             {/* Column 1: Brand & About */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">DT</div>
+                <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">
+                  DT
+                </div>
                 <span className="text-xl font-bold text-white">DT Skills</span>
               </div>
+
               <p className="text-sm leading-relaxed text-slate-400">
-                The leading AICTE-approved internship platform. We bridge the gap between academic learning and industry demands through real-time project experience.
+                DT Skills is an AICTE-aligned skill training and internship platform
+                operated by <strong>Doneswari Technologies LLP</strong>.
+                We focus on real-world projects, industry-ready skills, and
+                structured internships.
               </p>
-              <div className="flex gap-4 pt-2">
-                {/* Social Placeholders */}
-                <a href="#" className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-blue-600 transition text-white">𝕏</a>
-                <a href="#" className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-blue-600 transition text-white">in</a>
-                <a href="#" className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-blue-600 transition text-white">f</a>
-              </div>
             </div>
 
             {/* Column 2: Quick Links */}
             <div>
-              <h4 className="text-white font-semibold mb-6">Platform</h4>
+              <h4 className="text-white font-semibold mb-6">Quick Links</h4>
               <ul className="space-y-3 text-sm">
-                <li><a href="#" className="hover:text-blue-400 transition">Browse Courses</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition">Internship Process</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition">Verify Certificate</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition">Success Stories</a></li>
+                <li>
+                  <a href="/dashboard/catalog" className="hover:text-blue-400 transition">
+                    Browse Courses
+                  </a>
+                </li>
+                <li>
+                  <a href="/privacy-policy" className="hover:text-blue-400 transition">
+                    Privacy Policy
+                  </a>
+                </li>
+                <li>
+                  <a href="/terms-and-conditions" className="hover:text-blue-400 transition">
+                    Terms & Conditions
+                  </a>
+                </li>
+                <li>
+                  <a href="/refund-policy" className="hover:text-blue-400 transition">
+                    Refund Policy
+                  </a>
+                </li>
               </ul>
             </div>
 
-            {/* Column 3: Contact Info */}
+            {/* Column 3: Contact Info (CORRECT DETAILS) */}
             <div>
               <h4 className="text-white font-semibold mb-6">Contact Us</h4>
               <ul className="space-y-4 text-sm">
                 <li className="flex items-start gap-3">
                   <span className="text-blue-500 mt-0.5">📍</span>
                   <span>
-                    Tech Park, Sector 5<br />
-                    Bangalore, Karnataka - 560100
+                    Chittoor,<br />
+                    Andhra Pradesh, India
                   </span>
                 </li>
+
                 <li className="flex items-center gap-3">
                   <span className="text-blue-500">📧</span>
-                  <a href="mailto:support@dtskills.com" className="hover:text-white">support@dtskills.com</a>
+                  <a
+                    href="mailto:doneswarisoftwaresolutions@gmail.com"
+                    className="hover:text-white"
+                  >
+                    doneswarisoftwaresolutions@gmail.com
+                  </a>
                 </li>
+
                 <li className="flex items-center gap-3">
                   <span className="text-blue-500">📞</span>
-                  <span>+91 98765 43210</span>
+                  <span>+91 91828 45569</span>
                 </li>
               </ul>
             </div>
 
-            {/* Column 4: Newsletter */}
+            {/* Column 4: Business Info */}
             <div>
-              <h4 className="text-white font-semibold mb-6">Stay Updated</h4>
-              <p className="text-xs text-slate-500 mb-4">
-                Get the latest hiring trends and new course alerts directly to your inbox.
+              <h4 className="text-white font-semibold mb-6">Business</h4>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                <strong>Legal Entity:</strong><br />
+                Doneswari Technologies LLP
               </p>
-              <form className="space-y-2">
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
-                />
-                <button className="w-full bg-blue-600 text-white font-medium py-2 rounded-lg hover:bg-blue-700 transition text-sm">
-                  Subscribe
-                </button>
-              </form>
+
+              <p className="text-sm text-slate-400 leading-relaxed mt-3">
+                <strong>Support Hours:</strong><br />
+                Monday – Saturday<br />
+                10:00 AM – 6:00 PM (IST)
+              </p>
             </div>
 
           </div>
         </div>
 
-        {/* Bottom Bar: Copyright & Legal */}
+        {/* Bottom Bar */}
         <div className="border-t border-slate-900 bg-slate-950">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-slate-500">
-              © {new Date().getFullYear()} DT Skills Pvt Ltd. All rights reserved.
+              © {new Date().getFullYear()} Doneswari Technologies LLP. All rights reserved.
             </p>
+
             <div className="flex gap-6 text-xs text-slate-500">
-              <a href="#" className="hover:text-white transition">Privacy Policy</a>
-              <a href="#" className="hover:text-white transition">Terms of Service</a>
-              <a href="#" className="hover:text-white transition">Refund Policy</a>
+              <a href="/privacy-policy" className="hover:text-white transition">
+                Privacy Policy
+              </a>
+              <a href="/terms-and-conditions" className="hover:text-white transition">
+                Terms & Conditions
+              </a>
+              <a href="/refund-policy" className="hover:text-white transition">
+                Refund Policy
+              </a>
+              <a href="/contact-us" className="hover:text-white transition">
+                Contact Us
+              </a>
             </div>
           </div>
         </div>
+
       </footer>
+
     </div>
   );
 };

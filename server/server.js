@@ -27,7 +27,9 @@ const requireRole = require('./middleware/adminRole');
 const app = express();
 
 // --- GLOBAL MIDDLEWARE ---
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
 app.use(cors());
 
 // --- DATABASE CONNECTION ---
@@ -49,6 +51,8 @@ app.use('/api/internship', internshipRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/verify', require('./routes/verify'));
+app.use('/api/payment', require('./routes/payment'));
+
 
 
 // --- SUPER ADMIN ROUTE: GET ALL STUDENTS ---

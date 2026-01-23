@@ -45,6 +45,7 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('overview');
 
 
+    const [editingTopic, setEditingTopic] = useState(null);
 
     // Total paid enrollments
     const paidEnrollments = students.flatMap(s =>
@@ -125,11 +126,27 @@ export default function AdminDashboard() {
     const [previewStep, setPreviewStep] = useState('reading');
 
     const openPreview = (moduleIndex, topicIndex) => {
-        // FIX: Access 'modules' instead of 'chapters'
-        const topic = courseData.modules[moduleIndex].topics[topicIndex];
-        setPreviewTopic(topic);
+        const module = courseData.modules[moduleIndex];
+
+        // 🛡 Safety check (prevents crashes)
+        if (!module || !module.topics || !module.topics[topicIndex]) {
+            console.warn('Preview failed: topic not found');
+            return;
+        }
+
+        const t = module.topics[topicIndex];
+
+        setPreviewTopic({
+            title: t.title,
+            content: t.content || t.textContent || '',
+            quizzes: t.quizzes || []
+        });
+
+        // 🔄 Always start from reading
         setPreviewStep('reading');
     };
+
+
     useEffect(() => {
         const adminData = JSON.parse(localStorage.getItem('admin'));
 
@@ -206,11 +223,11 @@ export default function AdminDashboard() {
         const sanitizedModules = (course.modules || []).map(m => ({
             ...m,
             topics: (m.topics || []).map(t => ({
-                ...t,
-                // THE FIX: Look for 'content' (frontend) OR 'textContent' (backend)
-                content: t.content || t.textContent || '',
+                title: t.title,
+                textContent: t.textContent || '',
                 quizzes: t.quizzes || []
             }))
+
         }));
 
         setCourseData({
@@ -233,57 +250,71 @@ export default function AdminDashboard() {
         setNewModuleTitle('');
         setSelectedModuleIndex(courseData.modules.length);
     };
-
     const addTopic = () => {
-        if (courseData.modules.length === 0) return alert("Add a Module first");
+        if (!currentTopic.title) return alert("Topic title required");
 
         const updatedModules = [...courseData.modules];
 
         const topicToSave = {
             title: currentTopic.title,
             textContent: currentTopic.content,
-            quiz: currentTopic.quizzes
+            quizzes: currentTopic.quizzes
         };
 
-
-        updatedModules[selectedModuleIndex].topics.push(topicToSave);
+        if (editingTopic) {
+            updatedModules[editingTopic.moduleIndex].topics[editingTopic.topicIndex] = topicToSave;
+            setEditingTopic(null);
+        } else {
+            updatedModules[selectedModuleIndex].topics.push(topicToSave);
+        }
 
         setCourseData({ ...courseData, modules: updatedModules });
-
         setCurrentTopic({ title: '', content: '', quizzes: [] });
     };
-    const handleSaveCourse = async (isPublished) => {
+
+    const handleSaveDraft = async () => {
         try {
-            const response = await adminAxios.post('/courses/publish', {
-                ...courseData,
-                isPublished,
-                _id: editingId || null,
-                adminSecret: 'doneswari_admin_2025'
-            });
-
-            // 🔑 IMPORTANT: store ID after first save
-            if (!editingId && response.data?._id) {
-                setEditingId(response.data._id);
+            // CREATE draft (first time)
+            if (!editingId) {
+                const res = await adminAxios.post('/courses/draft', courseData);
+                setEditingId(res.data._id);
+                alert('Draft saved successfully');
+            }
+            // UPDATE draft
+            else {
+                await adminAxios.put(`/courses/${editingId}/draft`, courseData);
+                alert('Draft updated successfully');
             }
 
-            alert(isPublished ? 'Course Published!' : 'Draft Saved!');
-
-            // 🔄 reload courses list
-            fetchData();
-
-            // reset only after publish
-            if (isPublished) {
-                setCourseData({ title: '', description: '', price: 200, modules: [] });
-                setEditingId(null);
-            }
-
+            fetchData(); // refresh course list
             setActiveTab('courses');
         } catch (err) {
             console.error(err);
-            alert('Error saving course');
+            alert('Failed to save draft');
         }
     };
 
+    const handlePublishCourse = async () => {
+        if (!editingId) {
+            alert('Please save draft before publishing');
+            return;
+        }
+
+        try {
+            await adminAxios.put(`/courses/${editingId}/publish`);
+            alert('Course published successfully');
+
+            // reset builder
+            setCourseData({ title: '', description: '', price: 200, modules: [] });
+            setEditingId(null);
+
+            fetchData();
+            setActiveTab('courses');
+        } catch (err) {
+            console.error(err);
+            alert('Failed to publish course');
+        }
+    };
 
     const addQuizToTopic = () => {
         if (!tempQuiz.question) return alert("Please type a question");
@@ -299,10 +330,12 @@ export default function AdminDashboard() {
     // --- EDIT & DELETE LOGIC ---
 
     const deleteModule = (index) => {
+        setEditingTopic(null); // safety
         const updatedModules = [...courseData.modules];
         updatedModules.splice(index, 1);
         setCourseData({ ...courseData, modules: updatedModules });
     };
+
 
     const deleteTopic = (moduleIndex, topicIndex) => {
         const updatedModules = [...courseData.modules];
@@ -311,10 +344,22 @@ export default function AdminDashboard() {
     };
 
     const editTopic = (moduleIndex, topicIndex) => {
-        const topicToEdit = courseData.modules[moduleIndex].topics[topicIndex];
-        setCurrentTopic(topicToEdit);
+        const t = courseData.modules[moduleIndex].topics[topicIndex];
+
+        setCurrentTopic({
+            title: t.title,
+            content: t.content || t.textContent || '',
+            quizzes: t.quizzes || []
+        });
+
         setSelectedModuleIndex(moduleIndex);
-        deleteTopic(moduleIndex, topicIndex);
+
+        // ❌ DO NOT DELETE HERE
+        // deleteTopic(moduleIndex, topicIndex);
+
+        // Track editing
+        setEditingTopic({ moduleIndex, topicIndex });
+
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -993,11 +1038,12 @@ export default function AdminDashboard() {
                                                             <p className="text-sm font-bold text-slate-700 mb-1">{t.title}</p>
                                                             <div className="flex gap-3 text-xs text-slate-500">
 
-                                                                {t.content && (
+                                                                {(t.content || t.textContent) && (
                                                                     <span className="flex items-center gap-1 text-slate-600 bg-slate-100 px-1.5 rounded">
                                                                         <FileText size={12} /> Notes
                                                                     </span>
                                                                 )}
+
                                                                 {t.quizzes && t.quizzes.length > 0 && (
                                                                     <span className="flex items-center gap-1 text-green-700 bg-green-100 px-1.5 rounded font-medium">
                                                                         <HelpCircle size={12} /> {t.quizzes.length} Questions
@@ -1043,8 +1089,9 @@ export default function AdminDashboard() {
 
                                     <div className="flex gap-3">
                                         {/* SAVE DRAFT BUTTON */}
+                                        {/* SAVE DRAFT BUTTON */}
                                         <button
-                                            onClick={() => handleSaveCourse(false)} // false = isPublished
+                                            onClick={handleSaveDraft}
                                             className="flex-1 bg-slate-200 text-slate-800 py-3 rounded-xl font-bold text-lg hover:bg-slate-300 transition flex items-center justify-center gap-2"
                                         >
                                             <Save size={20} /> Save Draft
@@ -1052,11 +1099,12 @@ export default function AdminDashboard() {
 
                                         {/* PUBLISH BUTTON */}
                                         <button
-                                            onClick={() => handleSaveCourse(true)} // true = isPublished
+                                            onClick={handlePublishCourse}
                                             className="flex-1 bg-green-600 text-white py-3 rounded-xl font-bold text-lg shadow-md hover:bg-green-700 hover:shadow-lg transition flex items-center justify-center gap-2"
                                         >
-                                            <School size={20} /> {editingId ? "Update Live Course" : "Publish Course Live"}
+                                            <School size={20} /> Publish Course
                                         </button>
+
                                     </div>
                                 </div>
                             </div>
@@ -1391,9 +1439,16 @@ export default function AdminDashboard() {
                                 <h3 className="font-bold text-lg flex items-center gap-2">
                                     <Eye className="text-blue-400" /> Student Preview: {previewTopic.title}
                                 </h3>
-                                <button onClick={() => setPreviewTopic(null)} className="hover:bg-slate-700 p-2 rounded-full transition">
+                                <button
+                                    onClick={() => {
+                                        setPreviewTopic(null);
+                                        setPreviewStep('reading');
+                                    }}
+                                    className="hover:bg-slate-700 p-2 rounded-full transition"
+                                >
                                     <X size={24} />
                                 </button>
+
                             </div>
 
                             {/* Modern Content Area */}

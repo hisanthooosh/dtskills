@@ -98,7 +98,24 @@ const EnrolledCourseSchema = new mongoose.Schema({
   certificateIssuedAt: {
     type: Date,
     default: null
+  },
+  isPaid: {
+    type: Boolean,
+    default: false
+  },
+  paymentId: {
+    type: String,
+    default: null
+  },
+  orderId: {
+    type: String,
+    default: null
+  },
+  paidAt: {
+    type: Date,
+    default: null
   }
+
 
 });
 
