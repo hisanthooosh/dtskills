@@ -27,6 +27,7 @@ const Classroom = () => {
   const [githubRepo, setGithubRepo] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
 
 
 
@@ -41,7 +42,16 @@ const Classroom = () => {
       return;
     }
     fetchClassroomData();
-  }, [id, userId]);
+  }, [id, userId, navigate]);
+
+
+
+  useEffect(() => {
+    if (accessDenied) {
+      navigate('/dashboard/catalog', { replace: true });
+    }
+  }, [accessDenied, navigate]);
+
 
   const fetchClassroomData = async () => {
     try {
@@ -58,28 +68,23 @@ const Classroom = () => {
 
       // 2. Extract Progress (Safer)
       const enrollment = studentData.enrolledCourses?.find(
-        (c) => c.courseId && (c.courseId._id == id || c.courseId == id)
+        e => e.courseId && e.courseId._id?.toString() === id
       );
-      if (!enrollment || enrollment.isPaid !== true) {
-        return (
-          <div className="min-h-screen flex items-center justify-center bg-slate-50">
-            <div className="bg-white p-8 rounded-xl shadow text-center max-w-md">
-              <h2 className="text-xl font-bold text-slate-800 mb-2">
-                Payment Required
-              </h2>
-              <p className="text-slate-500 mb-6">
-                Please purchase this course to access the classroom.
-              </p>
-              <button
-                onClick={() => navigate('/dashboard/catalog')}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold"
-              >
-                Go to Course Catalog
-              </button>
-            </div>
-          </div>
+      const hasAccess =
+        enrollment &&
+        (
+          enrollment.isPaid === true ||   // new paid users
+          enrollment.enrolledAt           // old users (before Razorpay)
         );
+
+      if (!hasAccess) {
+        setAccessDenied(true);
+        setIsDataLoaded(true);
+        return;
       }
+
+
+
 
 
       // FIX: Default to empty array to prevent "undefined" errors
@@ -97,32 +102,32 @@ const Classroom = () => {
 
 
 
-      // 3. RESUME LOGIC: Find first uncompleted topic
       if (courseData.modules && courseData.modules.length > 0) {
-        // Only auto-jump if at start
-        if (activeModuleIndex === 0 && activeTopicIndex === 0) {
-          let foundResumePoint = false;
-          for (let m = 0; m < courseData.modules.length; m++) {
-            const module = courseData.modules[m];
-            if (!module.topics) continue;
+        let foundResumePoint = false;
 
-            for (let t = 0; t < module.topics.length; t++) {
-              const topic = module.topics[t];
-              // Robust check: Compare IDs as strings
+        for (let m = 0; m < courseData.modules.length; m++) {
+          const module = courseData.modules[m];
+          if (!module.topics) continue;
 
-              const isFinished = progressIds.some(pid => pid && topic._id && pid.toString() === topic._id.toString());
+          for (let t = 0; t < module.topics.length; t++) {
+            const topic = module.topics[t];
 
-              if (!isFinished) {
-                setActiveModuleIndex(m);
-                setActiveTopicIndex(t);
-                foundResumePoint = true;
-                break;
-              }
+            const isFinished = progressIds.some(
+              pid => pid?.toString() === topic._id?.toString()
+            );
+
+            if (!isFinished) {
+              setActiveModuleIndex(m);
+              setActiveTopicIndex(t);
+              foundResumePoint = true;
+              break;
             }
-            if (foundResumePoint) break;
           }
+
+          if (foundResumePoint) break;
         }
       }
+
       setIsDataLoaded(true);
     } catch (err) {
       console.error("Error loading classroom:", err);
@@ -131,7 +136,16 @@ const Classroom = () => {
   };
 
   // --- CRITICAL FIX: Loading State to prevent White Screen ---
-  if (!course || !isDataLoaded) return <div className="min-h-screen flex items-center justify-center text-slate-500 font-medium">Resuming your class...</div>;
+  if (!isDataLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading classroom…
+      </div>
+    );
+  }
+
+
+
   if (!course.modules || course.modules.length === 0) return <div className="p-10 text-center text-red-500">Course content is empty.</div>;
 
   const currentModule = course.modules[activeModuleIndex];
@@ -192,7 +206,8 @@ const Classroom = () => {
     } else if (topic.video) {
       videos = [{ title: "Video Lesson", url: topic.video }];
     }
-    const quizzes = topic.quiz && topic.quiz.length > 0 ? topic.quiz : (topic.quizzes || []);
+    const quizzes = Array.isArray(topic.quizzes) ? topic.quizzes : [];
+
     const text = topic.textContent || topic.content || "";
 
     return { ...topic, videos, quizzes, text };

@@ -139,7 +139,8 @@ export default function AdminDashboard() {
         setPreviewTopic({
             title: t.title,
             content: t.content || t.textContent || '',
-            quizzes: t.quizzes || []
+            quizzes: Array.isArray(t.quizzes) ? t.quizzes : []
+
         });
 
         // 🔄 Always start from reading
@@ -182,13 +183,14 @@ export default function AdminDashboard() {
             setCourses(courseRes.data);
 
 
-            // SUPER ADMIN ONLY
+            if (adminRole === 'super_admin' || adminRole === 'course_admin') {
+                const aicteRes = await adminAxios.get('/admin-manage/aicte');
+                setAicteList(aicteRes.data);
+            }
+
             if (adminRole === 'super_admin') {
                 const studentRes = await adminAxios.get('/admin/students');
                 setStudents(studentRes.data);
-
-                const aicteRes = await adminAxios.get('/admin-manage/aicte');
-                setAicteList(aicteRes.data);
             }
 
             setLoading(false);
@@ -607,6 +609,13 @@ export default function AdminDashboard() {
                                 className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800">
                                 <PlusCircle size={20} /> Create Course
                             </button>
+                            <button
+                                onClick={() => setActiveTab('aicte')}
+                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800"
+                            >
+                                AICTE Internship IDs
+                            </button>
+
                         </>
                     )}
 
@@ -1111,7 +1120,8 @@ export default function AdminDashboard() {
                         )}
                     </div>
                 )}
-                {adminRole === 'super_admin' && activeTab === 'aicte' && (
+                {(adminRole === 'super_admin' || adminRole === 'course_admin') && activeTab === 'aicte' && (
+
                     <div className="space-y-8">
                         <h2 className="text-2xl font-bold text-slate-800">
                             AICTE Internship IDs
@@ -1195,29 +1205,36 @@ export default function AdminDashboard() {
                                 </thead>
 
                                 <tbody>
-                                    {aicteList.map((row) => (
-                                        <tr key={row._id} className="border-b">
-                                            <td className="p-4">{row.email}</td>
-                                            <td className="p-4">{row.course}</td>
-                                            <td className="p-4 font-mono text-sm">
-                                                {row.aicteInternshipId}
-                                            </td>
-                                            <td className="p-4">
-                                                {row.status === 'Unused' ? (
-                                                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">
-                                                        Unused
-                                                    </span>
-                                                ) : (
-                                                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">
-                                                        Used
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="p-4 text-sm">
-                                                {row.usedBy || '—'}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {aicteList
+                                        .filter(row =>
+                                            adminRole === 'super_admin'
+                                                ? true
+                                                : courses.some(c => c._id === row.courseId)
+                                        )
+                                        .map((row) => (
+
+                                            <tr key={row._id} className="border-b">
+                                                <td className="p-4">{row.email}</td>
+                                                <td className="p-4">{row.course}</td>
+                                                <td className="p-4 font-mono text-sm">
+                                                    {row.aicteInternshipId}
+                                                </td>
+                                                <td className="p-4">
+                                                    {row.status === 'Unused' ? (
+                                                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">
+                                                            Unused
+                                                        </span>
+                                                    ) : (
+                                                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">
+                                                            Used
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 text-sm">
+                                                    {row.usedBy || '—'}
+                                                </td>
+                                            </tr>
+                                        ))}
                                 </tbody>
                             </table>
                         </div>
@@ -1474,60 +1491,27 @@ export default function AdminDashboard() {
                                                     <div className="prose lg:prose-lg text-slate-600 max-w-none mb-10 leading-relaxed">
                                                         <ReactMarkdown>{previewTopic.content || "_No text content added yet._"}</ReactMarkdown>
                                                     </div>
-
+                                                    {/* ✅ SMALL UX HINT (SAFE ADDITION) */}
+                                                    {previewTopic.quizzes && previewTopic.quizzes.length > 0 && (
+                                                        <p className="text-sm text-slate-500 mb-6">
+                                                            📘 This topic has <b>{previewTopic.quizzes.length}</b> quiz questions after reading.
+                                                        </p>
+                                                    )}
                                                     <div className="flex justify-end pt-6 border-t border-slate-100">
                                                         <button
+                                                            disabled={!previewTopic.quizzes || previewTopic.quizzes.length === 0}
                                                             onClick={() => setPreviewStep('quiz')}
-                                                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-200"
+                                                            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold
+             disabled:opacity-40 disabled:cursor-not-allowed"
                                                         >
                                                             Proceed to Quiz <ChevronRight size={20} />
                                                         </button>
+
                                                     </div>
                                                 </div>
                                             )}
 
-                                            {/* STEP 2: WATCHING */}
-                                            {previewStep === 'watching' && (
-                                                <div className="animate-in slide-in-from-right duration-300">
-                                                    <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                                        <Youtube className="text-red-600" /> Video Lesson
-                                                    </h3>
 
-                                                    {previewTopic.video ? (
-                                                        <div className="space-y-4">
-                                                            <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
-                                                                <iframe
-                                                                    src={getEmbedUrl(previewTopic.video)}
-                                                                    className="w-full h-full"
-                                                                    title={previewTopic.title}
-                                                                    allowFullScreen
-                                                                />
-                                                            </div>
-                                                            <p className="text-xs text-slate-400 text-center">Previewing: {previewTopic.video}</p>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="bg-slate-50 p-10 text-center rounded-xl border border-dashed border-slate-300">
-                                                            <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                                                                <Youtube size={32} />
-                                                            </div>
-                                                            <h4 className="text-lg font-bold text-slate-700">No Video Added</h4>
-                                                            <p className="text-slate-500 mt-2">Add a YouTube link in the topic editor to see it here.</p>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="flex justify-between mt-10 pt-6 border-t border-slate-100">
-                                                        <button onClick={() => setPreviewStep('reading')} className="text-slate-400 hover:text-slate-600 font-bold transition">
-                                                            ← Back
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setPreviewStep('quiz')}
-                                                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-200"
-                                                        >
-                                                            Proceed to Quiz <ChevronRight size={20} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
 
                                             {/* STEP 3: QUIZ */}
                                             {previewStep === 'quiz' && (
@@ -1544,9 +1528,10 @@ export default function AdminDashboard() {
                                                             </div>
                                                             <h3 className="text-xl font-bold text-slate-800">No Quiz Available</h3>
                                                             <p className="text-slate-500 mt-2 mb-6">You haven't added any questions to this topic yet.</p>
-                                                            <button onClick={() => setPreviewStep('watching')} className="text-slate-400 font-bold hover:text-slate-600">
+                                                            <button onClick={() => setPreviewStep('reading')}>
                                                                 Go Back
                                                             </button>
+
                                                         </div>
                                                     )}
                                                 </div>
@@ -1636,7 +1621,8 @@ const getEmbedUrl = (url) => {
 };
 
 const StepIndicator = ({ step, current, label, icon: Icon }) => {
-    const steps = ['reading', 'watching', 'quiz'];
+    const steps = ['reading', 'quiz'];
+
     const currentIndex = steps.indexOf(current);
     const stepIndex = steps.indexOf(step);
     const isCompleted = currentIndex > stepIndex;
