@@ -30,12 +30,17 @@ const LandingPage = () => {
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                DT
-              </div>
-              <span className="text-2xl font-bold text-slate-800 tracking-tight">Skills</span>
+            <div className="flex items-center gap-3">
+              <img
+                src="/logo.png"
+                alt="DT Skills Logo"
+                className="w-10 h-10 object-contain"
+              />
+              <span className="text-2xl font-bold text-slate-800 tracking-tight">
+               Skills
+              </span>
             </div>
+
             <div className="hidden md:flex space-x-8 items-center">
               <a href="#process" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition">The Process</a>
               <a href="#courses" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition">Programs</a>
@@ -63,19 +68,22 @@ const LandingPage = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
             </span>
-            AICTE Approved Internship Provider
+            AICTE Internship Portal Approved Organization
+
           </div>
 
           <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight mb-8 leading-tight">
             Learn Skills. Get Hired. <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-violet-600">
-              Intern With Us For Free.
+             Free Internship on Successful Course Completion
+
             </span>
           </h1>
 
           <p className="mt-4 max-w-2xl mx-auto text-xl text-slate-600 mb-10">
             We are an <strong>AICTE Approved Company</strong>. Pay only for your training.
-            Once certified, you join our internal team for a <span className="underline decoration-yellow-400 decoration-4 underline-offset-4">Guaranteed Free Internship</span> to launch your career.
+            Once certified, you join our internal team for a <span className="underline decoration-yellow-400 decoration-4 underline-offset-4">Free Internship on Successful Course Completion
+</span> to launch your career.
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4">
@@ -157,7 +165,8 @@ const LandingPage = () => {
               </div>
               <h4 className="text-xl font-bold mb-3 text-slate-900">Join Us as an Intern</h4>
               <p className="text-slate-600 leading-relaxed font-medium">
-                You become eligible for a <strong>Free Internship at DT Skills</strong>. Work on live company projects and get your AICTE certificate.
+                You become eligible for a <strong>Free Internship at DT Skills</strong>. Work on live company projects and receive an Internship Completion Certificate issued by Doneswari Technologies LLP.
+
               </p>
             </div>
           </div>
@@ -336,12 +345,17 @@ const LandingPage = () => {
 
             {/* Column 1: Brand & About */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">
-                  DT
-                </div>
-                <span className="text-xl font-bold text-white">DT Skills</span>
+              <div className="flex items-center gap-3 mb-4">
+                <img
+                  src="/logo.png"
+                  alt="DT Skills Logo"
+                  className="w-8 h-8 object-contain"
+                />
+                <span className="text-xl font-bold text-white">
+                  Skills
+                </span>
               </div>
+
 
               <p className="text-sm leading-relaxed text-slate-400">
                 DT Skills is an AICTE-aligned skill training and internship platform
