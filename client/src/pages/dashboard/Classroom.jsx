@@ -65,6 +65,10 @@ const Classroom = () => {
       const courseData = courseRes.data;
       const studentData = studentRes.data;
       setCourse(courseData);
+      console.log("FULL COURSE DATA:", courseData);
+      console.log("COURSE LEVEL QUIZ:", courseData.quiz);
+      console.log("COURSE MODULES:", courseData.modules);
+
 
       // 2. Extract Progress (Safer)
       const enrollment = studentData.enrolledCourses?.find(
@@ -199,6 +203,10 @@ const Classroom = () => {
   // --- HELPER TO HANDLE DATA ---
   const getTopicData = (topic) => {
     if (!topic) return {};
+    // 🔍 DEBUG LOGS — ADD THESE
+    console.log("TOPIC TITLE:", topic?.title);
+    console.log("RAW QUIZ FIELD:", topic?.quiz);
+    console.log("RAW QUIZZES FIELD:", topic?.quizzes);
 
     // 1. Handle Video
     let videos = [];
@@ -208,17 +216,36 @@ const Classroom = () => {
       videos = [{ title: "Video Lesson", url: topic.video }];
     }
 
-    // 2. Handle Quiz (The Fix)
-    // First, try to get data from EITHER field
     let rawQuizData = [];
 
+    // 1️⃣ Topic-level quiz (ONLY if it has questions)
     if (Array.isArray(topic.quiz) && topic.quiz.length > 0) {
-      // Priority 1: New Schema
       rawQuizData = topic.quiz;
-    } else if (Array.isArray(topic.quizzes) && topic.quizzes.length > 0) {
-      // Priority 2: Legacy Schema (Fallback)
+    }
+
+    // 2️⃣ Topic-level quiz object { questions: [] }
+    else if (
+      topic.quiz?.questions &&
+      Array.isArray(topic.quiz.questions) &&
+      topic.quiz.questions.length > 0
+    ) {
+      rawQuizData = topic.quiz.questions;
+    }
+
+    // 3️⃣ Legacy topic.quizzes
+    else if (Array.isArray(topic.quizzes) && topic.quizzes.length > 0) {
       rawQuizData = topic.quizzes;
     }
+
+    // 4️⃣ 🔥 FINAL FIX: MODULE-LEVEL QUIZ FALLBACK
+    else if (
+      currentModule?.quiz &&
+      Array.isArray(currentModule.quiz) &&
+      currentModule.quiz.length > 0
+    ) {
+      rawQuizData = currentModule.quiz;
+    }
+    console.log("FINAL QUIZ SOURCE:", rawQuizData);
 
     // Filter valid questions to prevent empty questions from breaking the UI
     const quizzes = rawQuizData.filter(q =>
@@ -505,31 +532,23 @@ const Classroom = () => {
                     )}
                   </div>
                   <div className="flex justify-end pt-6 border-t border-slate-100">
-                    <button
-                      disabled={!Array.isArray(activeData.quizzes) || activeData.quizzes.length === 0}
-                      onClick={() => setCurrentStep('quiz')}
-                      className={`
-    group flex items-center gap-2 px-8 py-3 rounded-xl font-bold
-    transition-all duration-300 ease-out
-    ${Array.isArray(activeData.quizzes) && activeData.quizzes.length > 0
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 hover:scale-[1.02]'
-                          : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                        }
-  `}
-                    >
-                      <span>Take Quiz</span>
-
-                      <ChevronRight
-                        size={20}
-                        className={`
-      transition-transform duration-300
-      ${Array.isArray(activeData.quizzes) && activeData.quizzes.length > 0
-                            ? 'group-hover:translate-x-1'
-                            : ''
-                          }
-    `}
-                      />
-                    </button>
+                    {Array.isArray(activeData.quizzes) && activeData.quizzes.length > 0 ? (
+                      // ✅ CASE 1: Quiz exists
+                      <button
+                        onClick={() => setCurrentStep('quiz')}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg"
+                      >
+                        Take Quiz  
+                      </button>
+                    ) : (
+                      // ✅ CASE 2: NO quiz → allow direct completion
+                      <button
+                        onClick={completeTopic}
+                        className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg"
+                      >
+                        Mark Topic as Complete 
+                      </button>
+                    )}
 
 
                   </div>

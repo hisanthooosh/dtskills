@@ -229,7 +229,7 @@ export default function AdminDashboard() {
         const sanitizedModules = (course.modules || []).map(m => ({
             ...m,
             topics: (m.topics || []).map(t => ({
-                title: t.title,
+                ...t, // 🔥 PRESERVE EVERYTHING
                 textContent: t.textContent || '',
                 quiz: Array.isArray(t.quiz)
                     ? t.quiz
@@ -237,6 +237,7 @@ export default function AdminDashboard() {
                         ? t.quizzes
                         : []
             }))
+
 
 
         }));
@@ -304,6 +305,11 @@ export default function AdminDashboard() {
             console.error(err);
             alert('Failed to save draft');
         }
+        console.log(
+            "SAVING COURSE PAYLOAD:",
+            JSON.stringify(courseData.modules[0].topics[0].quiz, null, 2)
+        );
+
     };
 
     const handlePublishCourse = async () => {
@@ -1511,16 +1517,29 @@ export default function AdminDashboard() {
                                                     )}
 
                                                     <div className="flex justify-end pt-6 border-t border-slate-100">
-                                                        <button
-                                                            disabled={!previewTopic.quiz || previewTopic.quiz.length === 0}
-                                                            onClick={() => setPreviewStep('quiz')}
-                                                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        >
-                                                            Proceed to Quiz <ChevronRight size={20} />
-                                                        </button>
-
-
+                                                        {previewTopic.quiz && previewTopic.quiz.length > 0 ? (
+                                                            // ✅ CASE 1: Quiz exists
+                                                            <button
+                                                                onClick={() => setPreviewStep('quiz')}
+                                                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-200"
+                                                            >
+                                                                Proceed to Quiz <ChevronRight size={20} />
+                                                            </button>
+                                                        ) : (
+                                                            // ✅ CASE 2: NO quiz (preview-only completion)
+                                                            <button
+                                                                onClick={() => {
+                                                                    // Preview only → simulate completion
+                                                                    setPreviewStep('reading');
+                                                                    alert('✅ Topic completed (Preview)');
+                                                                }}
+                                                                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-green-200"
+                                                            >
+                                                                Mark Topic as Complete <CheckCircle size={20} />
+                                                            </button>
+                                                        )}
                                                     </div>
+
                                                 </div>
                                             )}
 

@@ -77,13 +77,15 @@ router.get('/:id', async (req, res) => {
         if (module.topics) {
           module.topics.forEach(topic => {
             // Check if the NEW field 'quiz' exists and actually has questions
-            const hasNewQuiz = Array.isArray(topic.quiz) && topic.quiz.length > 0;
+            // ✅ SAFE NORMALIZATION — DO NOT ERASE DATA
+            if (Array.isArray(topic.quiz)) {
+              // keep as-is
+            } else if (Array.isArray(topic.quizzes)) {
+              topic.quiz = topic.quizzes;
+            } else {
+              topic.quiz = [];
+            }
 
-            // Check if the OLD field 'quizzes' exists and actually has questions
-            const hasLegacyQuiz = Array.isArray(topic.quizzes) && topic.quizzes.length > 0;
-
-            // Priority: Use new 'quiz' if valid -> otherwise fallback to 'quizzes' -> otherwise empty []
-            topic.quiz = hasNewQuiz ? topic.quiz : (hasLegacyQuiz ? topic.quizzes : []);
           });
         }
       });
