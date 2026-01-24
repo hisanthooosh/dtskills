@@ -22,8 +22,7 @@ import {
     Eye, X, School, Youtube, CheckCircle, Lock,
 
 
-    XCircle,       // <--- ADD THIS
-    ExternalLink   // <--- ADD THIS
+    
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -85,6 +84,36 @@ export default function AdminDashboard() {
         }
     });
 
+
+    // ================= REVENUE ANALYTICS =================
+
+    // Revenue by Month (YYYY-MM)
+    const revenueByMonth = {};
+    paidEnrollments.forEach(enroll => {
+        const date = new Date(enroll.createdAt || Date.now());
+        const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
+
+        revenueByMonth[key] = (revenueByMonth[key] || 0) + 200;
+    });
+
+    // Revenue by Course
+    const revenueByCourse = {};
+    paidEnrollments.forEach(enroll => {
+        const title = enroll.courseId?.title || 'Unknown Course';
+        revenueByCourse[title] = (revenueByCourse[title] || 0) + 200;
+    });
+
+    // Revenue by College
+    const revenueByCollege = {};
+    students.forEach(student => {
+        if (!student.collegeName) return;
+        const paid = student.enrolledCourses?.some(c => c.isPaid);
+        if (paid) {
+            revenueByCollege[student.collegeName] =
+                (revenueByCollege[student.collegeName] || 0) + 200;
+        }
+    });
+
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState(null); // Track if editing a draft
 
@@ -100,6 +129,32 @@ export default function AdminDashboard() {
         }
     };
 
+    // ================= ADVANCED REVENUE INSIGHTS =================
+
+    // Average revenue per paid student
+    const avgRevenuePerStudent =
+        PAID_STUDENTS > 0 ? Math.round(TOTAL_REVENUE / PAID_STUDENTS) : 0;
+
+    // Best performing course
+    const bestCourse = Object.entries(revenueByCourse)
+        .sort((a, b) => b[1] - a[1])[0];
+
+    // Best performing college
+    const bestCollege = Object.entries(revenueByCollege)
+        .sort((a, b) => b[1] - a[1])[0];
+
+    // Sort months chronologically
+    const sortedMonths = Object.entries(revenueByMonth).sort(
+        (a, b) => new Date(a[0]) - new Date(b[0])
+    );
+
+    // Month-over-month growth
+    let revenueGrowth = null;
+    if (sortedMonths.length >= 2) {
+        const last = sortedMonths[sortedMonths.length - 1][1];
+        const prev = sortedMonths[sortedMonths.length - 2][1];
+        revenueGrowth = prev > 0 ? Math.round(((last - prev) / prev) * 100) : 0;
+    }
 
     // --- BUILDER STATE ---
     // FIX: Changed 'chapters' to 'modules' to match backend
@@ -509,55 +564,6 @@ export default function AdminDashboard() {
     // --- SUBMISSIONS LOGIC START ---
     // const [activeTab, setActiveTab] = useState('overview');
     // If you already have activeTab, just ensure 'submissions' is handled
-    const [submissions, setSubmissions] = useState([]);
-    const [rejectModal, setRejectModal] = useState({ isOpen: false, id: null });
-    const [feedback, setFeedback] = useState('');
-
-    // Fetch Submissions when tab changes
-    useEffect(() => {
-        if (activeTab === 'submissions') {
-            adminAxios.get('/submissions')
-                .then(res => setSubmissions(res.data))
-                .catch(err => console.error(err));
-        }
-    }, [activeTab]);
-    useEffect(() => {
-        if (adminRole === 'super_admin') {
-            fetchColleges();
-        }
-    }, [adminRole]);
-
-
-
-    const handleApprove = async (id) => {
-        try {
-            await adminAxios.put(`/submissions/${id}/approve`);
-            alert("Approved!");
-            const res = await adminAxios.get('/submissions');
-            setSubmissions(res.data);
-        } catch (error) {
-            alert("Error approving");
-        }
-    };
-
-
-
-    const submitRejection = async () => {
-        try {
-            await adminAxios.put(
-                `/submissions/${rejectModal.id}/reject`,
-                { feedback }
-            );
-
-            setRejectModal({ isOpen: false, id: null });
-            setFeedback('');
-            alert("Rejected.");
-            // Refresh list
-            const res = await adminAxios.get('/submissions');
-
-            setSubmissions(res.data);
-        } catch (error) { alert("Error rejecting"); }
-    };
     // --- SUBMISSIONS LOGIC END ---
     if (loading) {
         return <div className="p-10 text-center">Loading admin dashboard...</div>;
@@ -582,6 +588,13 @@ export default function AdminDashboard() {
                                 className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800">
                                 <LayoutDashboard size={20} /> Overview
                             </button>
+                            <button
+                                onClick={() => setActiveTab('revenue')}
+                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800"
+                            >
+                                💰 Revenue Analytics
+                            </button>
+
 
                             <button onClick={() => setActiveTab('students')}
                                 className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800">
@@ -600,10 +613,7 @@ export default function AdminDashboard() {
                                 <FolderPlus size={20} /> Manage Colleges
                             </button>
 
-                            <button onClick={() => setActiveTab('submissions')}
-                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800">
-                                <FileText size={20} /> Submissions
-                            </button>
+                            
                             <button
                                 onClick={() => navigate('/admin/manage-admins')}
                                 className="w-full flex items-center gap-3 p-3 rounded-lg text-slate-400 hover:bg-slate-800"
@@ -732,22 +742,127 @@ export default function AdminDashboard() {
                         </div>
 
 
+
+                    </div>
+                )}
+                {/* VIEW: REVENUE ANALYTICS */}
+                {adminRole === 'super_admin' && activeTab === 'revenue' && (
+                    <div className="space-y-10">
+
+                        {/* HEADER */}
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-800">Revenue Analytics</h2>
+                            <p className="text-slate-500 text-sm">
+                                Business-level revenue insights (auto calculated)
+                            </p>
+                        </div>
+
+                        {/* KPI CARDS */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="bg-white p-6 rounded-xl shadow-sm">
+                                <p className="text-xs font-bold text-slate-500 uppercase">Total Revenue</p>
+                                <p className="text-3xl font-bold text-green-600 mt-2">₹{TOTAL_REVENUE}</p>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-xl shadow-sm">
+                                <p className="text-xs font-bold text-slate-500 uppercase">Paid Students</p>
+                                <p className="text-3xl font-bold text-slate-800 mt-2">{PAID_STUDENTS}</p>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-xl shadow-sm">
+                                <p className="text-xs font-bold text-slate-500 uppercase">
+                                    Avg / Student
+                                </p>
+                                <p className="text-3xl font-bold text-blue-600 mt-2">
+                                    ₹{avgRevenuePerStudent}
+                                </p>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-xl shadow-sm">
+                                <p className="text-xs font-bold text-slate-500 uppercase">
+                                    Monthly Growth
+                                </p>
+                                <p className={`text-3xl font-bold mt-2 ${revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                    {revenueGrowth !== null ? `${revenueGrowth}%` : '—'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* BEST PERFORMERS */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-white p-6 rounded-xl shadow-sm">
+                                <h3 className="font-bold text-lg mb-2">🏆 Top Course</h3>
+                                {bestCourse ? (
+                                    <p className="text-slate-700">
+                                        <b>{bestCourse[0]}</b> — ₹{bestCourse[1]}
+                                    </p>
+                                ) : (
+                                    <p className="text-slate-400 italic">No data yet</p>
+                                )}
+                            </div>
+
+                            <div className="bg-white p-6 rounded-xl shadow-sm">
+                                <h3 className="font-bold text-lg mb-2">🏫 Top College</h3>
+                                {bestCollege ? (
+                                    <p className="text-slate-700">
+                                        <b>{bestCollege[0]}</b> — ₹{bestCollege[1]}
+                                    </p>
+                                ) : (
+                                    <p className="text-slate-400 italic">No data yet</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* REVENUE BY MONTH */}
                         <div className="bg-white p-6 rounded-xl shadow-sm">
-                            <h3 className="font-bold text-lg mb-4">Recent Registrations</h3>
-                            {students.slice(0, 5).map(student => (
-                                <div key={student._id} className="flex justify-between py-3 border-b last:border-0">
-                                    <div>
-                                        <p className="font-bold text-slate-800">{student.name}</p>
-                                        <p className="text-xs text-slate-500">{student.collegeName}</p>
-                                    </div>
-                                    <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600 h-fit">
-                                        {new Date().toLocaleDateString()}
-                                    </span>
-                                </div>
-                            ))}
+                            <h3 className="font-bold text-lg mb-4">Revenue by Month</h3>
+
+                            {sortedMonths.length === 0 ? (
+                                <p className="text-slate-500 italic">No revenue yet.</p>
+                            ) : (
+                                <ul className="space-y-3">
+                                    {sortedMonths.map(([month, amount]) => (
+                                        <li key={month} className="flex justify-between border-b pb-2">
+                                            <span className="text-slate-600">{month}</span>
+                                            <span className="font-bold text-green-600">₹{amount}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+
+                        {/* REVENUE SPLIT */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                            <div className="bg-white p-6 rounded-xl shadow-sm">
+                                <h3 className="font-bold text-lg mb-4">Revenue by Course</h3>
+                                <ul className="space-y-2">
+                                    {Object.entries(revenueByCourse).map(([course, amount]) => (
+                                        <li key={course} className="flex justify-between border-b pb-2">
+                                            <span className="text-slate-600">{course}</span>
+                                            <span className="font-bold text-green-600">₹{amount}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-xl shadow-sm">
+                                <h3 className="font-bold text-lg mb-4">Revenue by College</h3>
+                                <ul className="space-y-2">
+                                    {Object.entries(revenueByCollege).map(([college, amount]) => (
+                                        <li key={college} className="flex justify-between border-b pb-2">
+                                            <span className="text-slate-600">{college}</span>
+                                            <span className="font-bold text-green-600">₹{amount}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
                         </div>
                     </div>
                 )}
+
 
                 {/* VIEW 2: STUDENTS LIST */}
                 {adminRole === 'super_admin' && activeTab === 'students' && (
@@ -1579,66 +1694,9 @@ export default function AdminDashboard() {
                 )}
                 {/* Main Content Area */}
 
-                {adminRole === 'super_admin' && activeTab === 'submissions' && (
-                    <div className="bg-white rounded-xl shadow-sm overflow-hidden p-6">
-                        <h2 className="text-xl font-bold mb-4">Student Submissions</h2>
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-50 border-b">
-                                <tr>
-                                    <th className="p-3">Student</th>
-                                    <th className="p-3">Links</th>
-                                    <th className="p-3">Status</th>
-                                    <th className="p-3">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {submissions.map((sub) => (
-                                    <tr key={sub._id} className="border-b hover:bg-gray-50">
-                                        <td className="p-3">{sub.studentName}</td>
-                                        <td className="p-3 text-sm">
-                                            <a href={sub.projectLink} target="_blank" className="text-blue-500 hover:underline mr-2">Project</a>
-                                            <a href={sub.githubLink} target="_blank" className="text-gray-700 hover:text-black">GitHub</a>
-                                        </td>
-                                        <td className="p-3">
-                                            <span className={`px-2 py-1 rounded text-xs ${sub.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                                                sub.status === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                                                }`}>
-                                                {sub.status}
-                                            </span>
-                                        </td>
-                                        <td className="p-3 flex space-x-2">
-                                            {sub.status === 'Pending' && (
-                                                <>
-                                                    <button onClick={() => handleApprove(sub._id)} className="text-green-600"><CheckCircle size={18} /></button>
-                                                    <button onClick={() => setRejectModal({ isOpen: true, id: sub._id })} className="text-red-600"><XCircle size={18} /></button>
-                                                </>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                
 
-                {/* PASTE THIS AT THE VERY BOTTOM OF THE JSX (Before the closing </div> of the main container) */}
-                {rejectModal.isOpen && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                        <div className="bg-white p-6 rounded-lg w-96">
-                            <h3 className="font-bold mb-2">Reason for Rejection</h3>
-                            <textarea
-                                className="w-full border p-2 mb-4"
-                                value={feedback}
-                                onChange={e => setFeedback(e.target.value)}
-                                placeholder="Feedback..."
-                            />
-                            <div className="flex justify-end space-x-2">
-                                <button onClick={() => setRejectModal({ isOpen: false, id: null })} className="text-gray-500">Cancel</button>
-                                <button onClick={submitRejection} className="bg-red-600 text-white px-3 py-1 rounded">Reject</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                
             </main>
         </div>
     );
