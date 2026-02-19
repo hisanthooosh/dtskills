@@ -22,7 +22,7 @@ import {
     Eye, X, School, Youtube, CheckCircle, Lock,
 
 
-    
+
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -465,6 +465,13 @@ export default function AdminDashboard() {
     };
 
     const [collegesList, setCollegesList] = useState([]);
+    // ✅ FETCH COLLEGES ON TAB OPEN / PAGE REFRESH
+    useEffect(() => {
+        if (adminRole === 'super_admin' && activeTab === 'colleges') {
+            fetchColleges();
+        }
+    }, [adminRole, activeTab]);
+
     const [targetCollegeId, setTargetCollegeId] = useState('');
     const [newCourse, setNewCourse] = useState({ name: '', start: '', end: '' });
 
@@ -613,7 +620,7 @@ export default function AdminDashboard() {
                                 <FolderPlus size={20} /> Manage Colleges
                             </button>
 
-                            
+
                             <button
                                 onClick={() => navigate('/admin/manage-admins')}
                                 className="w-full flex items-center gap-3 p-3 rounded-lg text-slate-400 hover:bg-slate-800"
@@ -1694,9 +1701,9 @@ export default function AdminDashboard() {
                 )}
                 {/* Main Content Area */}
 
-                
 
-                
+
+
             </main>
         </div>
     );

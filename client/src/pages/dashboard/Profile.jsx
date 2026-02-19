@@ -15,6 +15,8 @@ export default function Profile() {
 
   // Preview modal
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [certLoading, setCertLoading] = useState(false);
+
 
 
   useEffect(() => {
@@ -81,10 +83,29 @@ export default function Profile() {
     const diff = internshipEndsAt - now;
     daysRemaining = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
   }
+  const openPreviewWithLoader = (url) => {
+    setCertLoading(true);
+
+    setTimeout(() => {
+      setPreviewUrl(url);
+      setCertLoading(false);
+    }, 1500);
+  };
+
+  const openDownloadWithLoader = (url) => {
+    setCertLoading(true);
+
+    setTimeout(() => {
+      window.open(url, '_blank');
+      setCertLoading(false);
+    }, 1500);
+  };
 
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-10">
+      {certLoading && <CertificateLoader />}
+
 
       {/* ================= HEADER ================= */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-10 text-white shadow-xl">
@@ -129,17 +150,17 @@ export default function Profile() {
             icon={Award}
             active={courseCert}
             onPreview={() =>
-              setPreviewUrl(
+              openPreviewWithLoader(
                 `${import.meta.env.VITE_API_BASE_URL}/certificates/course/${student._id}`
               )
             }
 
             onDownload={() =>
-              window.open(
-                `${import.meta.env.VITE_API_BASE_URL}/certificates/course/${student._id}?download=true`,
-                '_blank'
+              openDownloadWithLoader(
+                `${import.meta.env.VITE_API_BASE_URL}/certificates/course/${student._id}?download=true`
               )
             }
+
           />
 
 
@@ -148,17 +169,17 @@ export default function Profile() {
             icon={FileText}
             active={offerLetter}
             onPreview={() =>
-              setPreviewUrl(
+              openPreviewWithLoader(
                 `${import.meta.env.VITE_API_BASE_URL}/certificates/offer-letter/${student._id}`
               )
             }
 
             onDownload={() =>
-              window.open(
-                `${import.meta.env.VITE_API_BASE_URL}/certificates/offer-letter/${student._id}?download=true`,
-                '_blank'
+              openDownloadWithLoader(
+                `${import.meta.env.VITE_API_BASE_URL}/certificates/offer-letter/${student._id}?download=true`
               )
             }
+
           />
 
 
@@ -184,17 +205,17 @@ export default function Profile() {
               ) : null
             }
             onPreview={() =>
-              setPreviewUrl(
+              openPreviewWithLoader(
                 `${import.meta.env.VITE_API_BASE_URL}/certificates/internship/${student._id}`
               )
             }
 
             onDownload={() =>
-              window.open(
-                `${import.meta.env.VITE_API_BASE_URL}/certificates/internship/${student._id}?download=true`,
-                '_blank'
+              openDownloadWithLoader(
+                `${import.meta.env.VITE_API_BASE_URL}/certificates/internship/${student._id}?download=true`
               )
             }
+
           />
 
 
@@ -256,7 +277,20 @@ export default function Profile() {
   );
 }
 
+
+
+
 /* ================= HELPERS ================= */
+function CertificateLoader() {
+  return (
+    <div className="fixed inset-0 z-[999] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+      <p className="mt-6 text-white text-sm tracking-wide">
+        Generating certificate, please wait…
+      </p>
+    </div>
+  );
+}
 
 function TimelineItem({ label, active }) {
   return (

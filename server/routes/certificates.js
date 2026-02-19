@@ -2,7 +2,6 @@ const express = require('express');
 const User = require('../models/User');
 const { generatePDF } = require('../utils/pdfGenerator');
 
-
 const router = express.Router();
 
 router.get('/:type/:userId', async (req, res) => {
@@ -16,7 +15,7 @@ router.get('/:type/:userId', async (req, res) => {
     const enrollment = user.enrolledCourses?.[0];
     if (!enrollment) return res.status(404).send('Enrollment not found');
 
-    // 🔒 ACCESS CONTROL
+    // 🔒 ACCESS CONTROL (CORRECT)
     if (type === 'course' && !enrollment.courseCertificateIssued)
       return res.status(403).send('Locked');
 
@@ -26,25 +25,23 @@ router.get('/:type/:userId', async (req, res) => {
     if (type === 'internship' && !enrollment.internshipCertificateIssued)
       return res.status(403).send('Locked');
 
-    // ================= CERT DATA =================
+    // ✅ CORRECT CERT DATA (THIS FIXES EVERYTHING)
     const certData = {
-      type: type === 'course' ? 'course' : 'internship',
+      type, // ✅ PASS EXACT TYPE (course | offer-letter | internship)
       name: user.username,
       college: user.collegeName || 'DT Skills Partner Institution',
       program: enrollment.courseId?.title || 'Internship Program',
-      durationWeeks: 8,
-      verificationUrl: `https://dtskills.in/verify/${user._id}`
+      internshipStartedAt: enrollment.internshipStartedAt,
+      internshipEndsAt: enrollment.internshipEndsAt
     };
 
-    // ================= PDF STREAM =================
     const pdfDoc = await generatePDF(certData);
-
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
       download === 'true'
-        ? `attachment; filename=${type}-certificate.pdf`
+        ? `attachment; filename=${type}.pdf`
         : 'inline'
     );
 

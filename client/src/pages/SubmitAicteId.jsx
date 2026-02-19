@@ -79,14 +79,77 @@ export default function SubmitAicteId() {
         </div>
 
         {/* INFO BOX */}
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
-          <ul className="list-disc pl-5 space-y-1">
-            <li>Complete Modules 1–5 before submitting</li>
-            <li>Enter the Internship ID received from AICTE portal</li>
-            <li>Internship unlocks instantly if AICTE ID is valid</li>
+        {/* INFO BOX */}
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-5 text-sm text-blue-800 space-y-4">
 
-          </ul>
+          <h2 className="text-base font-bold text-blue-900">
+            🚀 Internship Application Instructions
+          </h2>
+
+          <div>
+            <p className="font-semibold text-green-700">✅ STEP 1: Visit AICTE Internship Portal</p>
+            <a
+              href="https://internship.aicte-india.org/internshipbygoogle.php"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline font-medium"
+            >
+              👉 Open AICTE Portal
+            </a>
+          </div>
+
+          <div>
+            <p className="font-semibold text-green-700">✅ STEP 2: Create Student Account</p>
+            <ul className="list-disc pl-5">
+              <li>Use the SAME email as DT Skills</li>
+              <li>Use your active WhatsApp number</li>
+            </ul>
+            <p className="text-red-600 font-semibold mt-1">
+              ⚠ Email must match your DT Skills account
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold text-green-700">✅ STEP 3: Search for Company</p>
+            <ul className="list-disc pl-5">
+              <li>Go to Internship Search</li>
+              <li>Search for <strong>Doneswari Technologies</strong></li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-semibold text-green-700">✅ STEP 4: Apply for Internship</p>
+            <ul className="list-disc pl-5">
+              <li>Select the internship matching your DT Skills course</li>
+              <li>Use SAME email & WhatsApp number</li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-semibold text-green-700">✅ STEP 5: Receive Verification Code</p>
+            <ul className="list-disc pl-5">
+              <li>📩 Code sent to Email</li>
+              <li>📱 Code sent to WhatsApp</li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-semibold text-green-700">✅ STEP 6: Paste Code Below</p>
+            <p>Enter the received AICTE Internship ID in the field below.</p>
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <p className="font-semibold text-yellow-700 mb-1">🔒 Important Rules</p>
+            <ul className="list-disc pl-5 text-yellow-700">
+              <li>Email must match DT Skills email</li>
+              <li>WhatsApp number must be active</li>
+              <li>Apply only to Doneswari Technologies</li>
+              <li>Wrong email = Internship will not unlock</li>
+            </ul>
+          </div>
+
         </div>
+
 
         {/* SUCCESS STATE */}
         {submitted ? (

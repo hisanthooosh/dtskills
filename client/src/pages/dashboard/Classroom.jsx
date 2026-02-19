@@ -192,7 +192,10 @@ const Classroom = () => {
   }
 
 
-  const isFinalInternshipModule = activeModuleIndex === 9;
+  const isFinalInternshipModule =
+    activeModuleIndex === course.modules.length - 1 &&
+    activeTopicIndex === currentModule.topics.length - 1;
+
 
   // --- CRITICAL FIX: Optional Chaining to prevent crash if index is bad ---
   const currentTopic = currentModule?.topics ? currentModule.topics[activeTopicIndex] : null;
@@ -413,14 +416,21 @@ const Classroom = () => {
                   </h3>
 
                   {isInternship ? (
-                    <span className="text-[10px] px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 font-bold">
-                      🔒 Internship
-                    </span>
+                    internshipUnlocked ? (
+                      <span className="text-[10px] px-2 py-1 rounded-full bg-green-100 text-green-700 font-bold">
+                        Internship
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 font-bold">
+                        🔒 Internship
+                      </span>
+                    )
                   ) : (
                     <span className="text-[10px] px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-bold">
                       Course
                     </span>
                   )}
+
                 </div>
 
                 {/* COURSE MODULES (1–5) */}
@@ -458,6 +468,10 @@ const Classroom = () => {
                   <div className="space-y-1">
                     {internshipUnlocked ? (
                       module.topics.map((topic, tIdx) => {
+                        const isCompleted = completedTopics.some(
+                          id => id?.toString() === topic._id?.toString()
+                        );
+
                         const isActive =
                           mIdx === activeModuleIndex &&
                           tIdx === activeTopicIndex;
@@ -467,16 +481,17 @@ const Classroom = () => {
                             key={topic._id}
                             onClick={() => handleTopicClick(mIdx, tIdx)}
                             className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all
-              ${isActive
+        ${isActive
                                 ? 'bg-green-600 text-white shadow-md'
                                 : 'hover:bg-green-50 text-slate-700'
                               }`}
                           >
-                            🧑‍💻
+                            {isCompleted ? '✅' : '🧑‍💻'}
                             <span className="truncate">{topic.title}</span>
                           </button>
                         );
                       })
+
                     ) : (
                       <div className="text-xs text-slate-400 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                         🔒 Internship locked
@@ -538,7 +553,7 @@ const Classroom = () => {
                         onClick={() => setCurrentStep('quiz')}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg"
                       >
-                        Take Quiz  
+                        Take Quiz
                       </button>
                     ) : (
                       // ✅ CASE 2: NO quiz → allow direct completion
@@ -546,7 +561,7 @@ const Classroom = () => {
                         onClick={completeTopic}
                         className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg"
                       >
-                        Mark Topic as Complete 
+                        Mark Topic as Complete
                       </button>
                     )}
 

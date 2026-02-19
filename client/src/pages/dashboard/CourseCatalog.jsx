@@ -5,23 +5,44 @@ import { BookOpen, Clock, CheckCircle } from 'lucide-react';
 
 export default function CourseCatalog() {
   const [courses, setCourses] = useState([]);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const student = JSON.parse(localStorage.getItem('student'));
 
   useEffect(() => {
-    // Fetch all available courses
-    axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses`)
+    const fetchData = async () => {
+      try {
+        // 1️⃣ Get all published courses (same as before)
+        const courseRes = await axios.get(
+          `${import.meta.env.VITE_API_BASE_URL}/courses`
+        );
+        setCourses(courseRes.data);
 
-      .then(res => {
-        setCourses(res.data);
-        setLoading(false);
-      })
-      .catch(err => {
+        // 2️⃣ Get logged-in student enrollments (READ ONLY)
+        if (student?._id) {
+          const studentRes = await axios.get(
+            `${import.meta.env.VITE_API_BASE_URL}/student/${student._id}`
+          );
+
+          const enrolledIds =
+            studentRes.data.enrolledCourses?.map(
+              e => e.courseId?._id
+            ) || [];
+
+          setEnrolledCourseIds(enrolledIds);
+        }
+      } catch (err) {
         console.error(err);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchData();
   }, []);
+
 
   const handlePayment = async (course) => {
     try {
@@ -90,32 +111,50 @@ export default function CourseCatalog() {
       <h1 className="text-2xl font-bold text-slate-800 mb-6">Course Catalog</h1>
 
       <div className="grid md:grid-cols-3 gap-6">
-        {courses.map(course => (
-          <div key={course._id} className="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-lg transition flex flex-col h-full">
-            <div className="h-12 w-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold text-xl mb-4">
-              {course.title.charAt(0)}
+        {courses.map(course => {
+          const isEnrolled = enrolledCourseIds.includes(course._id);
+
+          return (
+
+            <div key={course._id} className="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-lg transition flex flex-col h-full">
+              <div className="h-12 w-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold text-xl mb-4">
+                {course.title.charAt(0)}
+              </div>
+
+              <h3 className="text-xl font-bold text-slate-900 mb-2">{course.title}</h3>
+              <p className="text-slate-500 text-sm mb-4 flex-1">{course.description}</p>
+
+              <div className="flex items-center gap-4 text-xs text-slate-400 mb-6 border-t pt-4">
+                <span className="flex items-center gap-1"><BookOpen size={14} /> {course.chapters?.length || 0} Chapters</span>
+                <span className="flex items-center gap-1"><Clock size={14} /> 45 Days</span>
+              </div>
+
+              <div className="flex items-center justify-between mt-auto">
+                <span className="text-xl font-bold text-slate-900">₹{course.price}</span>
+             
+
+                {isEnrolled ? (
+                  <button
+                    onClick={() => navigate(`/classroom/${course._id}`)}
+                    className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-bold"
+                  >
+                    Continue Learning
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handlePayment(course)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold"
+                  >
+                    Pay ₹{course.price}
+                  </button>
+                )}
+
+
+              </div>
             </div>
+          );
+        })}
 
-            <h3 className="text-xl font-bold text-slate-900 mb-2">{course.title}</h3>
-            <p className="text-slate-500 text-sm mb-4 flex-1">{course.description}</p>
-
-            <div className="flex items-center gap-4 text-xs text-slate-400 mb-6 border-t pt-4">
-              <span className="flex items-center gap-1"><BookOpen size={14} /> {course.chapters?.length || 0} Chapters</span>
-              <span className="flex items-center gap-1"><Clock size={14} /> 45 Days</span>
-            </div>
-
-            <div className="flex items-center justify-between mt-auto">
-              <span className="text-xl font-bold text-slate-900">₹{course.price}</span>
-              <button
-                onClick={() => handlePayment(course)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold"
-              >
-                Pay ₹{course.price}
-              </button>
-
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );

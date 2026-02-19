@@ -4,14 +4,17 @@ const fs = require('fs');
 
 async function generatePDF(data) {
   const {
-    type, // 'course' | 'internship' | 'offer-letter'
+    type,
     name,
     college,
     program,
     internshipStartedAt,
-    internshipEndsAt,
-    durationWeeks = 6
+    internshipEndsAt
   } = data;
+
+  const COMPANY_NAME = 'Doneswari Technologies LLP';
+  const FOUNDER_NAME = 'Doneswari Pathipati';
+  const DESIGNATION = 'Founder & CEO';
 
   const doc = new PDFDocument({ size: 'A4', margin: 60 });
   const pageWidth = doc.page.width;
@@ -24,32 +27,36 @@ async function generatePDF(data) {
       year: 'numeric'
     });
 
+  const today = formatDate(new Date());
+
   /* ================= BORDER ================= */
-  doc
-    .lineWidth(2)
-    .rect(30, 30, pageWidth - 60, pageHeight - 60)
-    .stroke('#1f2937');
+  doc.lineWidth(2)
+    .rect(25, 25, pageWidth - 50, pageHeight - 50)
+    .stroke('#0f172a');
+
+  doc.lineWidth(1)
+    .rect(35, 35, pageWidth - 70, pageHeight - 70)
+    .stroke('#cbd5f5');
 
   /* ================= LOGO ================= */
   const logoPath = path.join(__dirname, '../assets/dt-logo.png');
   if (fs.existsSync(logoPath)) {
-    doc.image(logoPath, pageWidth / 2 - 60, 45, { width: 120 });
+    doc.image(logoPath, pageWidth / 2 - 55, 45, { width: 110 });
   }
 
   doc.moveDown(4);
 
   /* ================= HEADER ================= */
-  doc
-    .fontSize(22)
-    .fillColor('#111827')
-    .font('Times-Bold')
-    .text('DONESWARI TECHNOLOGIES LLP', { align: 'center' });
+  doc.font('Times-Bold')
+    .fontSize(24)
+    .fillColor('#020617')
+    .text(COMPANY_NAME.toUpperCase(), { align: 'center' });
 
-  doc
-    .moveDown(0.5)
+  doc.moveDown(0.4);
+
+  doc.font('Times-Roman')
     .fontSize(11)
-    .font('Times-Roman')
-    .fillColor('#374151')
+    .fillColor('#475569')
     .text(
       'AICTE-Aligned Skill Development & Internship Organization',
       { align: 'center' }
@@ -57,170 +64,162 @@ async function generatePDF(data) {
 
   doc.moveDown(2);
 
-  /* ================= TITLE ================= */
-  let title = '';
-  if (type === 'course') title = 'COURSE COMPLETION CERTIFICATE';
-  if (type === 'internship') title = 'INTERNSHIP COMPLETION CERTIFICATE';
-  if (type === 'offer-letter') title = 'INTERNSHIP OFFER LETTER';
-
-  doc
-    .fontSize(20)
-    .font('Times-Bold')
-    .fillColor('#000')
-    .text(title, { align: 'center', underline: true });
-
-  doc.moveDown(3);
-
-  /* ================= BODY ================= */
-  doc
-    .fontSize(13)
-    .font('Times-Roman')
-    .fillColor('#111827')
-    .text('This is to certify that', { align: 'center' });
-
-  doc.moveDown(1);
-
-  doc
-    .fontSize(20)
-    .font('Times-Bold')
-    .text(name, { align: 'center' });
-
-  doc.moveDown(1);
-
-  doc
-    .fontSize(13)
-    .font('Times-Roman')
-    .text(`from ${college}`, { align: 'center' });
-
-  doc.moveDown(2);
-
-  /* ================= MAIN CONTENT ================= */
+  /* ======================================================
+     COURSE CERTIFICATE
+     ====================================================== */
   if (type === 'course') {
+    doc.font('Times-Bold').fontSize(20)
+      .text('COURSE COMPLETION CERTIFICATE', { align: 'center' });
+
+    doc.moveDown(2);
+
+    doc.font('Times-Roman').fontSize(13)
+      .text('This is to certify that', { align: 'center' });
+
+    doc.moveDown(0.8);
+
+    doc.font('Times-Bold').fontSize(22)
+      .text(name, { align: 'center' });
+
+    if (college) {
+      doc.moveDown(0.4);
+      doc.font('Times-Roman').fontSize(13)
+        .text(`of ${college}`, { align: 'center' });
+    }
+
+    doc.moveDown(1.4);
+
     doc.text(
-      `has successfully completed the professional course titled`,
+      'has successfully completed the professional certification program titled',
       { align: 'center' }
     );
 
     doc.moveDown(0.8);
 
-    doc
-      .font('Times-Bold')
-      .fontSize(15)
+    doc.font('Times-Bold').fontSize(16)
       .text(program, { align: 'center' });
 
-    doc.moveDown(1.5);
+    doc.moveDown(1.1);
 
-    doc
-      .fontSize(12)
-      .font('Times-Roman')
+    doc.font('Times-Roman').fontSize(12)
       .text(
-        'This certification program was designed to provide strong conceptual understanding, practical exposure, and industry-relevant skills aligned with current professional standards. The participant has demonstrated commitment, consistency, and competence throughout the course duration.',
-        {
-          align: 'center',
-          lineGap: 6
-        }
+        'This course was designed to provide strong conceptual foundations, practical exposure, and industry-relevant skill development. The participant has demonstrated dedication, consistency, and proficiency throughout the program.',
+        { align: 'center', lineGap: 5 }
       );
   }
 
-  if (type === 'internship') {
-    doc.text(
-      `has successfully completed a ${durationWeeks}-week internship program in`,
-      { align: 'center' }
-    );
-
-    doc.moveDown(0.8);
-
-    doc
-      .font('Times-Bold')
-      .fontSize(15)
-      .text(program, { align: 'center' });
-
-    doc.moveDown(1.5);
-
-    doc
-      .fontSize(12)
-      .font('Times-Roman')
-      .text(
-        `Internship Duration: ${formatDate(
-          internshipStartedAt
-        )} to ${formatDate(internshipEndsAt)}`,
-        { align: 'center' }
-      );
+  /* ======================================================
+     OFFER LETTER (PROFESSIONAL LETTER FORMAT)
+     ====================================================== */
+  if (type === 'offer-letter') {
+    doc.font('Times-Bold').fontSize(18)
+      .text('INTERNSHIP OFFER LETTER');
 
     doc.moveDown(1.2);
 
+    doc.font('Times-Roman').fontSize(11)
+      .text(`Date: ${today}`, { align: 'right' });
+
+    doc.moveDown(1.6);
+
+    doc.font('Times-Roman').fontSize(12)
+      .text('To,')
+      .text(name);
+
+    if (college) doc.text(college);
+
+    doc.moveDown(1.4);
+
+    doc.font('Times-Bold').fontSize(12)
+      .text('Subject: Offer of Internship');
+
+    doc.moveDown(1.1);
+
+    doc.font('Times-Roman').fontSize(12)
+      .text(
+        `Dear ${name},\n\n` +
+        `We are pleased to offer you an internship opportunity with ${COMPANY_NAME} in the role of ${program}. ` +
+        `The internship will commence from ${formatDate(internshipStartedAt)} and will conclude on ${formatDate(internshipEndsAt)}.\n\n` +
+        `This internship is offered in accordance with AICTE internship guidelines and is intended to provide practical industry exposure and professional skill development.\n\n` +
+        `We wish you a successful learning journey with us.\n\n` +
+        `Sincerely,`,
+        { lineGap: 5 }
+      );
+  }
+
+  /* ======================================================
+     INTERNSHIP COMPLETION CERTIFICATE
+     ====================================================== */
+  if (type === 'internship') {
+    doc.font('Times-Bold').fontSize(20)
+      .text('INTERNSHIP COMPLETION CERTIFICATE', { align: 'center' });
+
+    doc.moveDown(1.9);
+
+    doc.font('Times-Roman').fontSize(13)
+      .text('This is to certify that', { align: 'center' });
+
+    doc.moveDown(0.8);
+
+    doc.font('Times-Bold').fontSize(22)
+      .text(name, { align: 'center' });
+
+    doc.moveDown(1.1);
+
+    doc.font('Times-Roman').fontSize(13)
+      .text('has successfully completed an internship at', { align: 'center' });
+
+    doc.moveDown(0.5);
+
+    doc.font('Times-Bold').fontSize(15)
+      .text(COMPANY_NAME, { align: 'center' });
+
+    doc.moveDown(0.9);
+
+    doc.font('Times-Roman').fontSize(12)
+      .text(`Internship Role: ${program}`, { align: 'center' });
+
+    doc.moveDown(0.5);
+
     doc.text(
-      'During the internship period, the candidate demonstrated professionalism, technical aptitude, and a strong willingness to learn. The intern actively participated in assigned responsibilities and adhered to organizational standards and expectations.',
-      {
-        align: 'center',
-        lineGap: 6
-      }
+      `Duration: ${formatDate(internshipStartedAt)} to ${formatDate(internshipEndsAt)}`,
+      { align: 'center' }
+    );
+
+    doc.moveDown(1.1);
+
+    doc.text(
+      'During the internship period, the candidate demonstrated professionalism, technical competence, and a strong willingness to learn. All assigned responsibilities were completed satisfactorily.',
+      { align: 'center', lineGap: 5 }
     );
   }
+
+  /* ================= SIGNATURE (NEAT & PROFESSIONAL) ================= */
+  let signX = pageWidth / 2 - 60;
+  let signY = doc.y + 25;
 
   if (type === 'offer-letter') {
-    doc.text(
-      'We are pleased to inform you that you have been selected for an internship opportunity at',
-      { align: 'center' }
-    );
-
-    doc.moveDown(1);
-
-    doc
-      .font('Times-Bold')
-      .fontSize(15)
-      .text('Doneswari Technologies LLP', { align: 'center' });
-
-    doc.moveDown(1.5);
-
-    doc
-      .fontSize(12)
-      .font('Times-Roman')
-      .text(
-        `The internship will be in the domain of ${program} for a duration of ${durationWeeks} weeks, commencing from ${formatDate(
-          internshipStartedAt
-        )}.`,
-        { align: 'center', lineGap: 6 }
-      );
-
-    doc.moveDown(1.5);
-
-    doc.text(
-      'This internship is offered in alignment with AICTE internship guidelines and is intended to provide practical exposure, industry insights, and professional skill development. Further details regarding reporting, responsibilities, and guidelines will be communicated separately.',
-      {
-        align: 'center',
-        lineGap: 6
-      }
-    );
+    signX = 60;
+    signY = doc.y + 10;
   }
 
-  /* ================= FOOTER ================= */
-  doc.moveDown(4);
+  const signPath = path.join(__dirname, '../assets/sign.png');
+  if (fs.existsSync(signPath)) {
+    doc.image(signPath, signX, signY, {
+      width: 120
+    });
+  }
 
-  doc
-    .fontSize(11)
-    .text(
-      'Issued by Doneswari Technologies LLP',
-      { align: 'center' }
-    );
+  doc.y = signY + 85;
 
-  doc.moveDown(0.5);
+  doc.font('Times-Bold').fontSize(12)
+    .text(FOUNDER_NAME, { align: 'center' });
 
-  doc
-    .fontSize(10)
-    .text(
-      'Founder & CEO – Doneswari Pathipati',
-      { align: 'center' }
-    );
+  doc.font('Times-Roman').fontSize(10)
+    .text(DESIGNATION, { align: 'center' });
 
-  doc.moveDown(0.3);
-
-  doc
-    .fontSize(10)
-    .text(
-      'Issued on: 01 January 2026',
-      { align: 'center' }
-    );
+  doc.font('Times-Roman').fontSize(10)
+    .text(COMPANY_NAME, { align: 'center' });
 
   return doc;
 }
